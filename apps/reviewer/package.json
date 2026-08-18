@@ -1,0 +1,36 @@
+{
+  "name": "@agentgraph/reviewer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AgentGraph code review bot and GitHub integration",
+  "license": "MIT",
+  "author": "nbsp1221",
+  "bin": {
+    "agentgraph": "dist/cli.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:dist": "node dist/cli.js --version",
+    "test:e2e": "vitest run --project e2e",
+    "test:integration": "vitest run --project integration",
+    "test:unit": "vitest run --project unit",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@octokit/app": "16.1.4",
+    "cac": "7.0.0",
+    "execa": "10.0.1",
+    "yaml": "^2.9.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@agentgraph/typescript-config": "workspace:*"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

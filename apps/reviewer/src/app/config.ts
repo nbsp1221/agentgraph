@@ -50,7 +50,6 @@ function validateReviewResources(resourcesDirectory: string): void {
 export function loadServerConfig(environment: NodeJS.ProcessEnv = process.env): ServerConfig {
   const dataDirectory = environment.APP_DATA_DIRECTORY ?? join(process.cwd(), '.agentgraph');
   const port = Number(environment.APP_PORT ?? '6571');
-  // The application root is the process working directory in source and container modes.
   const resourcesDirectory =
     environment.APP_RESOURCES_DIRECTORY ?? join(process.cwd(), 'resources');
   validateReviewResources(resourcesDirectory);

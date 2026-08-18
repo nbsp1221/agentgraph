@@ -1,0 +1,4 @@
+{
+  "extends": "@agentgraph/typescript-config/base.json",
+  "include": ["src"]
+}
