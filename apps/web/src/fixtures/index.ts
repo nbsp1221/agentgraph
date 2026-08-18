@@ -33,6 +33,10 @@ export const fixtureScenarios = [
   'evaluation-history',
   'saving-evaluation',
   'evaluation-save-failure',
+  'context-available',
+  'context-unavailable',
+  'context-loading',
+  'context-error',
   'stress',
   'finding-open',
   'finding-fixed',
@@ -258,7 +262,11 @@ export function createFixture(scenario: FixtureScenario = 'default'): FixtureSta
     scenario === 'all-findings-evaluated' ||
     scenario === 'evaluation-history' ||
     scenario === 'saving-evaluation' ||
-    scenario === 'evaluation-save-failure'
+    scenario === 'evaluation-save-failure' ||
+    scenario === 'context-available' ||
+    scenario === 'context-unavailable' ||
+    scenario === 'context-loading' ||
+    scenario === 'context-error'
   ) {
     state.activeReview = review({
       review_evaluation:

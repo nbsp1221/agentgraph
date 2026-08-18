@@ -42,6 +42,7 @@ import {
 } from '../fixtures';
 import { type HealthDescriptionKey, healthDescriptionKey } from '../fixtures/health';
 import { Link } from '../i18n/navigation';
+import { FixtureContextTransport } from './fixture-context-transport';
 import { FixtureEvaluationTransport } from './fixture-evaluation-transport';
 
 type CommonLabelKey =
@@ -114,14 +115,23 @@ export function FixtureDetailPreview({
         ? 'saving'
         : 'failure'
       : undefined;
+  const contextMode =
+    scenario === 'context-available' ||
+    scenario === 'context-unavailable' ||
+    scenario === 'context-loading' ||
+    scenario === 'context-error'
+      ? (scenario.replace('context-', '') as 'available' | 'unavailable' | 'loading' | 'error')
+      : undefined;
   return (
-    <FixtureEvaluationTransport mode={transportMode}>
-      <ReviewDetailPage
-        detail={resolvedDetail}
-        returnQuery={returnQuery}
-        evaluations={fixtureEvaluationsResponse(state, reviewId) ?? null}
-      />
-    </FixtureEvaluationTransport>
+    <FixtureContextTransport mode={contextMode}>
+      <FixtureEvaluationTransport mode={transportMode}>
+        <ReviewDetailPage
+          detail={resolvedDetail}
+          returnQuery={returnQuery}
+          evaluations={fixtureEvaluationsResponse(state, reviewId) ?? null}
+        />
+      </FixtureEvaluationTransport>
+    </FixtureContextTransport>
   );
 }
 

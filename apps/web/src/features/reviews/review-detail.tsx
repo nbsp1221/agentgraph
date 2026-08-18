@@ -19,6 +19,7 @@ import { ArrowLeftIcon, ChevronDownIcon, ExternalLinkIcon } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { Link } from '../../i18n/navigation';
 import { CopyShaButton } from './copy-sha';
+import { FindingContext } from './finding-context';
 import { ReviewEvaluationPanel } from './review-evaluation';
 import { RelativeTime } from './review-list-columns';
 
@@ -276,6 +277,7 @@ function Findings({
                   <p className="text-muted-foreground">
                     {t('suggestedAction')}: {finding.suggested_action}
                   </p>
+                  <FindingContext reviewId={detail.id} fingerprint={finding.fingerprint} />
                   <ReviewEvaluationPanel
                     reviewId={detail.id}
                     target="finding"
