@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import en from '../../messages/en.json';
 import ko from '../../messages/ko.json';
 import { healthDescriptionKey } from './health';
-import { createFixture, fixtureScenarios, isFixtureControlEnabled } from './index';
+import {
+  createFixture,
+  fixtureListResponse,
+  fixtureScenarios,
+  isFixtureControlEnabled,
+} from './index';
 
 describe('fixture harness', () => {
   it('creates every named scenario with a typed shell state', () => {
@@ -29,5 +34,23 @@ describe('fixture harness', () => {
       expect(en.reviews[key]).toBeTruthy();
       expect(ko.reviews[key]).toBeTruthy();
     }
+  });
+
+  it('paginates fixture responses and keeps named active reviews visible', () => {
+    const pageTwo = fixtureListResponse(createFixture('pagination'), { page: 2 });
+    expect(pageTwo.page).toBe(2);
+    expect(pageTwo.items).toHaveLength(4);
+    expect(pageTwo.items[0]?.id).toBe(221);
+
+    const running = fixtureListResponse(createFixture('running'));
+    expect(running.items[0]?.id).toBe(240);
+    expect(running.items[0]?.status).toBe('running');
+  });
+
+  it('uses the public evaluation taxonomy when applying fixture filters', () => {
+    const state = createFixture('default');
+    const needsEvaluation = fixtureListResponse(state, { evaluation: 'needs_evaluation' });
+    expect(needsEvaluation.items.every((item) => item.status === 'completed')).toBe(true);
+    expect(needsEvaluation.items.every((item) => item.review_evaluation === null)).toBe(true);
   });
 });

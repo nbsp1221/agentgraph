@@ -29,6 +29,15 @@ import {
   positiveId,
 } from '../server-common.js';
 
+const reviewStatusMap: Record<string, string[]> = {
+  running: ['CHECKING_OUT', 'SANDBOX_CREATING', 'REVIEWING', 'VALIDATING', 'PUBLISHING'],
+  completed: ['DONE'],
+  failed: ['FAILED', 'TIMED_OUT'],
+  superseded: ['SUPERSEDED'],
+  queued: ['QUEUED'],
+  cancelled: ['CANCELLED'],
+};
+
 export function registerReviewRoutes(
   app: Hono,
   database: JobDatabase,
@@ -46,17 +55,20 @@ export function registerReviewRoutes(
         : values.includes('unknown')
           ? 'unknown'
           : 'healthy';
+    const activeStages = database.getActiveJobStages();
     const response = statusResponseSchema.parse({
       overall,
       observed_at: new Date().toISOString(),
       ...observations,
-      active_jobs: database.getActiveJobIds().size,
+      active_jobs: Object.values(activeStages).reduce((sum, count) => sum + count, 0),
+      active_stages: activeStages,
     });
     return json(c, response);
   });
 
   const querySchema = z.object({
     page: z.coerce.number().int().positive().default(1),
+    sort: z.enum(['created', 'completed']).default('created'),
     query: z.string().trim().optional(),
     evaluation: z.enum(['evaluated', 'needs_evaluation']).optional(),
     status: z.string().optional(),
@@ -76,23 +88,16 @@ export function registerReviewRoutes(
         .flatMap((entry) => entry.split(','))
         .map((value) => value.trim().toLowerCase())
         .filter(Boolean);
-      const statusMap: Record<string, string[]> = {
-        running: ['CHECKING_OUT', 'SANDBOX_CREATING', 'REVIEWING', 'VALIDATING', 'PUBLISHING'],
-        completed: ['DONE'],
-        failed: ['FAILED', 'TIMED_OUT'],
-        superseded: ['SUPERSEDED'],
-        queued: ['QUEUED'],
-        cancelled: ['CANCELLED'],
-      };
-      if (statuses.some((value) => statusMap[value] === undefined)) {
+      if (statuses.some((value) => reviewStatusMap[value] === undefined)) {
         return apiError(c, 422, 'invalid status filter', 'INVALID_QUERY');
       }
       const result = database.listReviewJobs({
         page: query.page,
+        sort: query.sort,
         ...(query.query === undefined ? {} : { query: query.query }),
         ...(statuses.length === 0
           ? {}
-          : { statuses: statuses.flatMap((value) => statusMap[value] ?? []) }),
+          : { statuses: statuses.flatMap((value) => reviewStatusMap[value] ?? []) }),
         ...(query.evaluation === undefined ? {} : { evaluation: query.evaluation }),
       });
       const response = reviewListResponseSchema.parse({
@@ -116,6 +121,7 @@ export function registerReviewRoutes(
           evaluated_findings: item.evaluatedFindings,
           total_findings: item.totalFindings,
           created_at: item.createdAt,
+          started_at: item.startedAt ?? null,
           completed_at: item.completedAt ?? null,
           duration_ms: item.durationMs ?? null,
         })),

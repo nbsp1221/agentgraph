@@ -1,4 +1,4 @@
-import type { DependencyStatus, ReviewListItem } from '@agentgraph/contracts';
+import type { DependencyStatus, ReviewListItem, ReviewListResponse } from '@agentgraph/contracts';
 
 export const fixtureScenarios = [
   'default',
@@ -43,6 +43,13 @@ export type FixtureState = {
   fixtureOnly: true;
 };
 
+export type FixtureListQuery = {
+  page?: number | undefined;
+  query?: string | undefined;
+  status?: string | undefined;
+  evaluation?: string | undefined;
+};
+
 const observedAt = '2026-08-18T09:00:00.000Z';
 
 function review(overrides: Partial<ReviewListItem> = {}): ReviewListItem {
@@ -62,6 +69,7 @@ function review(overrides: Partial<ReviewListItem> = {}): ReviewListItem {
     evaluated_findings: 0,
     total_findings: 3,
     created_at: observedAt,
+    started_at: observedAt,
     completed_at: observedAt,
     duration_ms: 131000,
     ...overrides,
@@ -265,4 +273,37 @@ export function isFixtureScenario(value: string | undefined): value is FixtureSc
 
 export function isFixtureControlEnabled(environment: string | undefined): boolean {
   return environment !== 'production';
+}
+
+export function fixtureListResponse(
+  state: FixtureState,
+  query: FixtureListQuery = {},
+): ReviewListResponse {
+  const allReviews = state.activeReview
+    ? [state.activeReview, ...state.reviews.filter((item) => item.id !== state.activeReview?.id)]
+    : state.reviews;
+  const search = query.query?.trim().toLowerCase();
+  const filtered = allReviews.filter((item) => {
+    const haystack =
+      `${item.repository} ${item.pull_request_number} ${item.pull_request_title ?? ''}`.toLowerCase();
+    const matchesQuery = !search || haystack.includes(search);
+    const matchesStatus = !query.status || query.status === 'all' || item.status === query.status;
+    const matchesEvaluation =
+      !query.evaluation ||
+      query.evaluation === 'all' ||
+      (query.evaluation === 'evaluated'
+        ? item.review_evaluation !== null
+        : item.status === 'completed' && item.review_evaluation === null);
+    return matchesQuery && matchesStatus && matchesEvaluation;
+  });
+  const page = Math.max(1, query.page ?? 1);
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / 20);
+  return {
+    items: filtered.slice((page - 1) * 20, page * 20),
+    page,
+    page_size: 20,
+    total_items: totalItems,
+    total_pages: totalPages,
+  };
 }

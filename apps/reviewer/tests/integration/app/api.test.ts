@@ -194,6 +194,49 @@ describe('versioned reviewer API contracts', () => {
     expect((await fetch(`${url}/api/v1/reviews/999999`)).status).toBe(404);
   });
 
+  it('can sort completed runs by completion time rather than creation time', async () => {
+    const { url, database } = await fixture();
+    database.enqueuePullRequest({
+      action: 'opened',
+      deliveryId: 'older-created',
+      headSha: 'd'.repeat(40),
+      installationId: 42,
+      policyVersion: 'v1',
+      pullRequestNumber: 100,
+      repository: 'owner/repo',
+    });
+    const older = database.claimNextJob();
+    if (older === undefined) {
+      throw new Error('older fixture job was not claimed');
+    }
+    database.enqueuePullRequest({
+      action: 'opened',
+      deliveryId: 'newer-created',
+      headSha: 'e'.repeat(40),
+      installationId: 42,
+      policyVersion: 'v1',
+      pullRequestNumber: 101,
+      repository: 'owner/repo',
+    });
+    const newer = database.claimNextJob();
+    if (newer === undefined) {
+      throw new Error('newer fixture job was not claimed');
+    }
+    database.updateJob({ id: newer.id, state: 'VALIDATING', expectedStates: ['CHECKING_OUT'] });
+    database.updateJob({ id: newer.id, state: 'DONE', expectedStates: ['VALIDATING'] });
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 2);
+    });
+    database.updateJob({ id: older.id, state: 'VALIDATING', expectedStates: ['CHECKING_OUT'] });
+    database.updateJob({ id: older.id, state: 'DONE', expectedStates: ['VALIDATING'] });
+
+    const sorted = reviewListResponseSchema.parse(
+      await (await fetch(`${url}/api/v1/reviews?sort=completed`)).json(),
+    );
+    expect(sorted.items[0]?.id).toBe(older.id);
+    expect(sorted.items[1]?.id).toBe(newer.id);
+  });
+
   it('returns contract errors for malformed JSON and invalid withdraw revisions', async () => {
     const { url, job } = await fixture();
     const malformed = await fetch(`${url}/api/v1/reviews/${job.id}/evaluation`, {

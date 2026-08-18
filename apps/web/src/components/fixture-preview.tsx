@@ -26,10 +26,12 @@ import {
 import { Skeleton } from '@agentgraph/ui/components/skeleton';
 import { ActivityIcon, CircleAlertIcon, CircleCheckIcon, CircleXIcon } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import { ReviewList } from '../features/reviews/review-list';
 import {
   type FixtureScenario,
   type FixtureState,
   createFixture,
+  fixtureListResponse,
   fixtureScenarios,
   isFixtureScenario,
 } from '../fixtures';
@@ -49,10 +51,15 @@ type CommonLabelKey =
 
 type FixturePreviewProps = {
   requestedScenario?: string | undefined;
+  searchParams?: Record<string, string | string[] | undefined> | undefined;
   allowControls: boolean;
 };
 
-export async function FixturePreview({ requestedScenario, allowControls }: FixturePreviewProps) {
+export async function FixturePreview({
+  requestedScenario,
+  searchParams,
+  allowControls,
+}: FixturePreviewProps) {
   const t = await getTranslations('reviews');
   const scenario: FixtureScenario =
     allowControls && isFixtureScenario(requestedScenario) ? requestedScenario : 'default';
@@ -71,7 +78,7 @@ export async function FixturePreview({ requestedScenario, allowControls }: Fixtu
       </div>
       <HealthCard state={state} statusLabel={statusLabel} description={t} />
       <SummaryCards state={state} t={t} />
-      <ReviewStateCard state={state} t={t} />
+      <ReviewStateCard state={state} t={t} searchParams={searchParams} />
     </div>
   );
 }
@@ -219,7 +226,15 @@ function SummaryCards({ state, t }: { state: FixtureState; t: (key: string) => s
   );
 }
 
-function ReviewStateCard({ state, t }: { state: FixtureState; t: (key: string) => string }) {
+function ReviewStateCard({
+  state,
+  t,
+  searchParams,
+}: {
+  state: FixtureState;
+  t: (key: string) => string;
+  searchParams?: Record<string, string | string[] | undefined> | undefined;
+}) {
   if (state.listState === 'loading') {
     return (
       <Card>
@@ -261,43 +276,21 @@ function ReviewStateCard({ state, t }: { state: FixtureState; t: (key: string) =
       </Empty>
     );
   }
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('reviewHistory')}</CardTitle>
-        <CardDescription>
-          {state.activeReview ? `${t('scenario')}: ${state.scenario}` : t('placeholder')}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        {(state.activeReview ? [state.activeReview] : state.reviews.slice(0, 5)).map((item) => (
-          <div
-            key={item.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">
-                {item.repository} · #{item.pull_request_number}
-              </p>
-              <p className="truncate text-sm text-muted-foreground">{item.pull_request_title}</p>
-            </div>
-            <StatusBadge status={item.status} t={t} />
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
 
-function StatusBadge({ status, t }: { status: string; t: (key: string) => string }) {
+  const value = (key: string) => {
+    const raw = searchParams?.[key];
+    return Array.isArray(raw) ? raw[0] : raw;
+  };
+
   return (
-    <Badge
-      variant={
-        status === 'failed' ? 'destructive' : status === 'completed' ? 'secondary' : 'outline'
-      }
-    >
-      {t(status)}
-    </Badge>
+    <ReviewList
+      response={fixtureListResponse(state, {
+        page: Number(value('page')) || 1,
+        query: value('query'),
+        status: value('status'),
+        evaluation: value('evaluation'),
+      })}
+    />
   );
 }
 

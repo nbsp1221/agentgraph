@@ -37,6 +37,7 @@ export interface ReviewFinding {
 
 export interface ReviewListQuery {
   page: number;
+  sort?: 'created' | 'completed';
   query?: string;
   statuses?: readonly string[];
   evaluation?: 'evaluated' | 'needs_evaluation';
@@ -220,6 +221,10 @@ export class ReviewRepository {
     const count = this.database
       .prepare(`SELECT COUNT(*) AS count FROM review_jobs j ${predicate}`)
       .get(...params) as { count: number };
+    const orderBy =
+      input.sort === 'completed'
+        ? 'j.review_completed_at DESC, j.id DESC'
+        : 'j.created_at DESC, j.id DESC';
     const rows = this.database
       .prepare(`
       SELECT j.*, a.availability, a.result_json,
@@ -228,7 +233,7 @@ export class ReviewRepository {
         (SELECT MAX(id) FROM evaluation_revisions e WHERE e.job_id=j.id AND e.target_type='review') AS review_evaluation_id,
         (SELECT verdict FROM evaluation_revisions e WHERE e.id=(SELECT MAX(id) FROM evaluation_revisions WHERE job_id=j.id AND target_type='review')) AS review_verdict
       FROM review_jobs j LEFT JOIN review_artifacts a ON a.job_id=j.id ${predicate}
-      ORDER BY j.created_at DESC, j.id DESC LIMIT 20 OFFSET ?
+      ORDER BY ${orderBy} LIMIT 20 OFFSET ?
     `)
       .all(...params, (Math.max(1, input.page) - 1) * 20) as Array<Record<string, unknown>>;
     return { totalItems: Number(count.count), items: rows };

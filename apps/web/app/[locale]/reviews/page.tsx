@@ -1,4 +1,5 @@
-import { getTranslations } from 'next-intl/server';
+import { ReviewDashboard } from '../../../src/features/reviews/review-dashboard';
+import { getReviewData } from '../../../src/features/reviews/review-data';
 
 export default async function ReviewsPage({
   searchParams,
@@ -19,16 +20,18 @@ export default async function ReviewsPage({
     return (
       <FixturePreview
         requestedScenario={requestedScenario}
+        searchParams={params}
         allowControls={isFixtureControlEnabled(process.env.NODE_ENV)}
       />
     );
   }
 
-  const t = await getTranslations('reviews');
-  return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-2">
-      <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
-      <p className="text-sm text-muted-foreground">{t('apiPlaceholder')}</p>
-    </main>
+  const data = await getReviewData(
+    new URLSearchParams(
+      Object.entries(params).flatMap(([key, value]) => [
+        [key, Array.isArray(value) ? (value[0] ?? '') : (value ?? '')],
+      ]),
+    ),
   );
+  return <ReviewDashboard data={data} />;
 }

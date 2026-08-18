@@ -37,6 +37,7 @@ export const statusResponseSchema = z.object({
   sandbox: dependencyObservationSchema,
   github: dependencyObservationSchema,
   active_jobs: z.number().int().nonnegative(),
+  active_stages: z.record(z.string(), z.number().int().nonnegative()),
 });
 
 export const reviewListItemSchema = z.object({
@@ -55,6 +56,7 @@ export const reviewListItemSchema = z.object({
   evaluated_findings: z.number().int().nonnegative(),
   total_findings: z.number().int().nonnegative(),
   created_at: isoDate,
+  started_at: isoDate.nullable(),
   completed_at: isoDate.nullable(),
   duration_ms: z.number().int().nonnegative().nullable(),
 });

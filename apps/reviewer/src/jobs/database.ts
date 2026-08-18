@@ -112,6 +112,7 @@ export interface LatestJobStatus {
 
 export interface ReviewQuery {
   page: number;
+  sort?: 'created' | 'completed';
   query?: string;
   statuses?: readonly string[];
   evaluation?: 'evaluated' | 'needs_evaluation';
@@ -134,6 +135,7 @@ export interface ReviewQueryRow {
   evaluatedFindings: number;
   totalFindings: number;
   createdAt: string;
+  startedAt?: string;
   completedAt?: string;
   durationMs: number | undefined;
 }
@@ -360,6 +362,9 @@ export class JobDatabase {
             : {}),
           ...reviewVerdictFromRow(row.review_verdict),
           createdAt: String(row.created_at),
+          ...(typeof row.review_started_at === 'string'
+            ? { startedAt: row.review_started_at }
+            : {}),
           ...(typeof row.review_completed_at === 'string'
             ? { completedAt: row.review_completed_at }
             : {}),
@@ -410,6 +415,21 @@ export class JobDatabase {
       `)
       .all() as Array<{ id: number }>;
     return new Set(rows.map((row) => Number(row.id)));
+  }
+
+  getActiveJobStages(): Record<string, number> {
+    const rows = this.#database
+      .prepare(`
+        SELECT state, COUNT(*) AS count FROM review_jobs
+        WHERE state IN (
+          'QUEUED', 'CHECKING_OUT', 'SANDBOX_CREATING', 'REVIEWING', 'VALIDATING', 'PUBLISHING'
+        )
+        GROUP BY state
+      `)
+      .all() as Array<{ state: string; count: number }>;
+    return Object.fromEntries(
+      rows.map((row) => [String(row.state).toLowerCase(), Number(row.count)]),
+    );
   }
 
   acceptManualCommand(command: ManualCommand): boolean {

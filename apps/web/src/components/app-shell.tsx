@@ -32,16 +32,19 @@ import {
 import { MoonIcon, SunIcon, WaypointsIcon } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { useEffect, useState } from 'react';
 import { Link, usePathname, useRouter } from '../i18n/navigation';
 
 export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <TooltipProvider>
-      <SidebarProvider defaultOpen>
-        <AppSidebar />
-        <SidebarMain>{children}</SidebarMain>
-      </SidebarProvider>
+      <NuqsAdapter>
+        <SidebarProvider defaultOpen>
+          <AppSidebar />
+          <SidebarMain>{children}</SidebarMain>
+        </SidebarProvider>
+      </NuqsAdapter>
     </TooltipProvider>
   );
 }
