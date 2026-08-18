@@ -152,7 +152,7 @@ export function ReviewList({ response, error = false, detailScenario }: ReviewLi
           </div>
           <Select value={status} onValueChange={(value) => updateFilter('status', value ?? 'all')}>
             <SelectTrigger aria-label={t('statusFilter')}>
-              <SelectValue placeholder={t('allStatuses')} />
+              <SelectValue>{status === 'all' ? t('allStatuses') : t(status)}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('allStatuses')}</SelectItem>
@@ -167,7 +167,13 @@ export function ReviewList({ response, error = false, detailScenario }: ReviewLi
             onValueChange={(value) => updateFilter('evaluation', value ?? 'all')}
           >
             <SelectTrigger aria-label={t('evaluationFilter')}>
-              <SelectValue placeholder={t('allEvaluations')} />
+              <SelectValue>
+                {evaluation === 'all'
+                  ? t('allEvaluations')
+                  : evaluation === 'needs_evaluation'
+                    ? t('notEvaluated')
+                    : t('evaluated')}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('allEvaluations')}</SelectItem>
