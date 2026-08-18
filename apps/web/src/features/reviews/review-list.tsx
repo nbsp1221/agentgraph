@@ -107,7 +107,7 @@ export function ReviewList({ response, error = false, detailScenario }: ReviewLi
         <AlertTitle>{t('errorTitle')}</AlertTitle>
         <AlertDescription>{t('errorDescription')}</AlertDescription>
         <Button variant="outline" onClick={() => router.refresh()}>
-          {t('retry')}
+          {common('retry')}
         </Button>
       </Alert>
     );
