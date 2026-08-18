@@ -189,6 +189,7 @@ export const errorResponseSchema = z.object({
 });
 
 export type StatusResponse = z.infer<typeof statusResponseSchema>;
+export type DependencyStatus = z.infer<typeof dependencyStatusSchema>;
 export type ReviewListItem = z.infer<typeof reviewListItemSchema>;
 export type ReviewListResponse = z.infer<typeof reviewListResponseSchema>;
 export type ReviewDetail = z.infer<typeof reviewDetailSchema>;

@@ -9,3 +9,4 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - hono@4.13.3
+  - lucide-react@1.32.0

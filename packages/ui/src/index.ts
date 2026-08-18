@@ -1,2 +1,1 @@
-/** Shared UI components will be added with the web application. */
-export {};
+export { cn } from './lib/utils.js';
