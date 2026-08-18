@@ -10,7 +10,8 @@ describe('server configuration', () => {
       loadServerConfig({
         APP_DATA_DIRECTORY: '/workspace/.agentgraph',
         APP_PORT: '6571',
-        APP_PUBLIC_URL: 'https://agentgraph.example.com',
+        APP_UI_BASE_URL: 'https://agentgraph.tailnet.example.com',
+        GITHUB_WEBHOOK_URL: 'https://github.example.com/webhooks/github',
         GITHUB_ALLOWED_OWNER_ID: '42',
         GITHUB_APP_NAME: 'example-agentgraph-app',
         REVIEW_MODEL: 'review-model',
@@ -24,7 +25,8 @@ describe('server configuration', () => {
       githubAppName: 'example-agentgraph-app',
       model: 'review-model',
       port: 6571,
-      publicBaseUrl: 'https://agentgraph.example.com',
+      uiBaseUrl: 'https://agentgraph.tailnet.example.com',
+      webhookUrl: 'https://github.example.com/webhooks/github',
       reasoningEffort: 'medium',
       resourcesDirectory: join(process.cwd(), 'resources'),
     });
@@ -33,7 +35,8 @@ describe('server configuration', () => {
   it('uses the application-root resources in source mode', () => {
     expect(
       loadServerConfig({
-        APP_PUBLIC_URL: 'https://agentgraph.example.com',
+        APP_UI_BASE_URL: 'https://agentgraph.tailnet.example.com',
+        GITHUB_WEBHOOK_URL: 'https://github.example.com/webhooks/github',
         GITHUB_ALLOWED_OWNER_ID: '42',
         GITHUB_APP_NAME: 'example-agentgraph-app',
       }).resourcesDirectory,
@@ -49,7 +52,8 @@ describe('server configuration', () => {
     try {
       expect(
         loadServerConfig({
-          APP_PUBLIC_URL: 'https://agentgraph.example.com',
+          APP_UI_BASE_URL: 'https://agentgraph.tailnet.example.com',
+          GITHUB_WEBHOOK_URL: 'https://github.example.com/webhooks/github',
           APP_RESOURCES_DIRECTORY: resourcesDirectory,
           GITHUB_ALLOWED_OWNER_ID: '42',
           GITHUB_APP_NAME: 'example-agentgraph-app',
@@ -67,7 +71,8 @@ describe('server configuration', () => {
 
       expect(() =>
         loadServerConfig({
-          APP_PUBLIC_URL: 'https://agentgraph.example.com',
+          APP_UI_BASE_URL: 'https://agentgraph.tailnet.example.com',
+          GITHUB_WEBHOOK_URL: 'https://github.example.com/webhooks/github',
           APP_RESOURCES_DIRECTORY: resourcesDirectory,
           GITHUB_ALLOWED_OWNER_ID: '42',
           GITHUB_APP_NAME: 'example-agentgraph-app',
@@ -81,7 +86,8 @@ describe('server configuration', () => {
   it('uses the quality-first review defaults', () => {
     expect(
       loadServerConfig({
-        APP_PUBLIC_URL: 'https://agentgraph.example.com',
+        APP_UI_BASE_URL: 'https://agentgraph.tailnet.example.com',
+        GITHUB_WEBHOOK_URL: 'https://github.example.com/webhooks/github',
         GITHUB_ALLOWED_OWNER_ID: '42',
         GITHUB_APP_NAME: 'example-agentgraph-app',
       }),
@@ -94,7 +100,8 @@ describe('server configuration', () => {
   it('rejects unsupported reasoning effort instead of silently falling back', () => {
     expect(() =>
       loadServerConfig({
-        APP_PUBLIC_URL: 'https://agentgraph.example.com',
+        APP_UI_BASE_URL: 'https://agentgraph.tailnet.example.com',
+        GITHUB_WEBHOOK_URL: 'https://github.example.com/webhooks/github',
         GITHUB_ALLOWED_OWNER_ID: '42',
         GITHUB_APP_NAME: 'example-agentgraph-app',
         REVIEW_REASONING_EFFORT: 'automatic',
@@ -104,5 +111,54 @@ describe('server configuration', () => {
 
   it('requires an explicit GitHub owner account', () => {
     expect(() => loadServerConfig({})).toThrow();
+  });
+
+  it('requires separate UI and webhook base URLs', () => {
+    expect(() =>
+      loadServerConfig({
+        APP_PUBLIC_URL: 'https://legacy.example.com',
+        GITHUB_ALLOWED_OWNER_ID: '42',
+        GITHUB_APP_NAME: 'example-agentgraph-app',
+      }),
+    ).toThrow();
+  });
+
+  it('rejects UI URLs that are not plain HTTP origins', () => {
+    for (const value of [
+      'ftp://agentgraph.example.com',
+      'https://agentgraph.example.com/private',
+      'https://agentgraph.example.com/?tenant=1',
+      'https://agentgraph.example.com/#ui',
+      'https://user:pass@agentgraph.example.com',
+    ]) {
+      expect(() =>
+        loadServerConfig({
+          APP_UI_BASE_URL: value,
+          GITHUB_WEBHOOK_URL: 'https://github.example.com/webhooks/github',
+          GITHUB_ALLOWED_OWNER_ID: '42',
+          GITHUB_APP_NAME: 'example-agentgraph-app',
+        }),
+      ).toThrow();
+    }
+  });
+
+  it('rejects webhook URLs that are not the exact public endpoint', () => {
+    for (const value of [
+      'ftp://github.example.com/webhooks/github',
+      'https://github.example.com/webhooks/github/',
+      'https://github.example.com/webhooks/other',
+      'https://github.example.com/webhooks/github?token=1',
+      'https://github.example.com/webhooks/github#hook',
+      'https://user:pass@github.example.com/webhooks/github',
+    ]) {
+      expect(() =>
+        loadServerConfig({
+          APP_UI_BASE_URL: 'https://agentgraph.example.com',
+          GITHUB_WEBHOOK_URL: value,
+          GITHUB_ALLOWED_OWNER_ID: '42',
+          GITHUB_APP_NAME: 'example-agentgraph-app',
+        }),
+      ).toThrow();
+    }
   });
 });

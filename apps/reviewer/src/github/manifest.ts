@@ -17,10 +17,13 @@ export interface GitHubManifestRegistration {
 }
 
 export function createGitHubManifestRegistration(
-  publicBaseUrl: string,
+  uiBaseUrl: string,
+  webhookUrl: string,
   githubAppName: string,
 ): GitHubManifestRegistration {
   const state = randomBytes(32).toString('hex');
+  const uiOrigin = new URL(uiBaseUrl).origin;
+  const redirectUrl = new URL('/setup/github/callback', uiBaseUrl).toString();
   const manifest = JSON.stringify({
     default_events: ['issue_comment', 'pull_request'],
     default_permissions: {
@@ -33,12 +36,12 @@ export function createGitHubManifestRegistration(
     description: 'Personal GitHub assistant for automated issue and pull request workflows',
     hook_attributes: {
       active: true,
-      url: `${publicBaseUrl}/webhooks/github`,
+      url: webhookUrl,
     },
     name: githubAppName,
     public: false,
-    redirect_url: `${publicBaseUrl}/setup/github/callback`,
-    url: publicBaseUrl,
+    redirect_url: redirectUrl,
+    url: uiOrigin,
   });
 
   return { manifest, state };

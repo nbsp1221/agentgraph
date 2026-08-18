@@ -2,6 +2,50 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 
+const uiBaseUrlSchema = z.string().superRefine((value, context) => {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    context.addIssue({ code: 'custom', message: 'must be a valid URL' });
+    return;
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    context.addIssue({ code: 'custom', message: 'must use http or https' });
+  }
+  if (parsed.username !== '' || parsed.password !== '') {
+    context.addIssue({ code: 'custom', message: 'must not include userinfo' });
+  }
+  if (parsed.pathname !== '/') {
+    context.addIssue({ code: 'custom', message: 'must be an origin without a path' });
+  }
+  if (parsed.search !== '' || parsed.hash !== '') {
+    context.addIssue({ code: 'custom', message: 'must not include a query or hash' });
+  }
+});
+
+const webhookUrlSchema = z.string().superRefine((value, context) => {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    context.addIssue({ code: 'custom', message: 'must be a valid URL' });
+    return;
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    context.addIssue({ code: 'custom', message: 'must use http or https' });
+  }
+  if (parsed.username !== '' || parsed.password !== '') {
+    context.addIssue({ code: 'custom', message: 'must not include userinfo' });
+  }
+  if (parsed.pathname !== '/webhooks/github') {
+    context.addIssue({ code: 'custom', message: 'must be exactly /webhooks/github' });
+  }
+  if (parsed.search !== '' || parsed.hash !== '') {
+    context.addIssue({ code: 'custom', message: 'must not include a query or hash' });
+  }
+});
+
 const serverConfigSchema = z.object({
   allowedOwnerId: z.number().int().positive(),
   credentialsDirectory: z.string().min(1),
@@ -11,7 +55,8 @@ const serverConfigSchema = z.object({
   githubAppName: z.string().min(1),
   model: z.string().min(1),
   port: z.number().int().min(1).max(65_535),
-  publicBaseUrl: z.url(),
+  uiBaseUrl: uiBaseUrlSchema,
+  webhookUrl: webhookUrlSchema,
   reasoningEffort: z.enum(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']),
   resourcesDirectory: z.string().min(1),
 });
@@ -64,7 +109,8 @@ export function loadServerConfig(environment: NodeJS.ProcessEnv = process.env): 
     githubAppName: environment.GITHUB_APP_NAME,
     model: environment.REVIEW_MODEL ?? 'gpt-5.6-sol',
     port,
-    publicBaseUrl: environment.APP_PUBLIC_URL ?? `http://127.0.0.1:${port}`,
+    uiBaseUrl: environment.APP_UI_BASE_URL,
+    webhookUrl: environment.GITHUB_WEBHOOK_URL,
     reasoningEffort: environment.REVIEW_REASONING_EFFORT ?? 'high',
     resourcesDirectory,
   });

@@ -19,7 +19,8 @@ const config: ServerConfig = {
   githubAppName: 'test-agentgraph-app',
   model: 'gpt-5.6-luna',
   port: 6571,
-  publicBaseUrl: 'https://github-assistant.retn0.dev',
+  uiBaseUrl: 'https://agentgraph.tailnet.example.com',
+  webhookUrl: 'https://github-assistant.retn0.dev/webhooks/github',
   reasoningEffort: 'low',
   resourcesDirectory: '/unused/resources',
 };

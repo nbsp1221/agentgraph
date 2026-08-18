@@ -41,7 +41,7 @@ corepack pnpm dev -- --help
 
 ## Configuration
 
-Copy the public example and set the GitHub account ID and callback URL for your installation:
+Copy the public example and set the GitHub account ID, private operator UI URL, and exact public webhook URL (including `/webhooks/github`) for your installation:
 
 ```sh
 cp .env.example .env
@@ -81,11 +81,9 @@ Imports remain explicit rather than using barrel exports. The `review` modules d
 The deployment boundary is:
 
 ```text
-GitHub
-  -> optional reverse proxy or tunnel
-  -> AgentGraph container
-  -> host sandboxd Unix socket
-  -> disposable Codex Docker Sandbox
+GitHub -> public Caddy webhook route -> reviewer
+Tailnet operator -> private Caddy route -> web / reviewer API
+reviewer -> host sandboxd Unix socket -> disposable Codex Docker Sandbox
 ```
 
 Docker Compose provides a reproducible AgentGraph process, health reporting, and restart policy. The trusted host `sandboxd` daemon remains the execution bridge because it owns Docker Sandbox lifecycle and operator-managed Codex OAuth. The AgentGraph container does not receive the host Docker socket.
@@ -103,15 +101,27 @@ Compose runs two independently healthy services: the reviewer listens on interna
 
 Runtime state stays with the checkout in `.agentgraph/`; no root-owned directory or system-wide application path is required. Only the reviewer mounts the data directory, sandbox CLI/configuration, and sandbox daemon state. The data directory is mounted at the same absolute path because the host `sandboxd` daemon must be able to resolve per-job anchor and resource paths created by the reviewer container. The web container receives no GitHub credentials, sandbox mounts, or data volume. Private repository contents are still cloned only inside the disposable Sandbox.
 
-This MVP intentionally has no application-level authentication. Deploy the site only behind an operator-controlled private network such as Tailscale; anyone who can reach the site can read review artifacts and change evaluations. Within that trusted boundary, same-origin Caddy routing should send API and webhook paths to the reviewer and all other paths to the web service:
+This MVP intentionally has no application-level authentication. Keep the UI, API, and setup flow behind an operator-controlled private network such as Tailscale; anyone who can reach them can read review artifacts and change evaluations. The public GitHub host must expose only the exact webhook endpoint. It must not expose the UI, API, or setup routes.
 
 ```caddy
 github-assistant.example.com {
-    @reviewer path /api/* /healthz /webhooks/github /setup/github*
+    @github_webhook {
+        method POST
+        path /webhooks/github
+    }
+    handle @github_webhook {
+        reverse_proxy reviewer:6571
+    }
+    handle {
+        respond 404
+    }
+}
+
+agentgraph.tailnet.example.com {
+    @reviewer path /api/* /healthz /setup/github*
     handle @reviewer {
         reverse_proxy reviewer:6571
     }
-
     handle {
         reverse_proxy web:6572
     }

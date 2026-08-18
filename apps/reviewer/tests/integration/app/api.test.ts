@@ -26,7 +26,8 @@ const config = {
   githubAppName: 'test',
   model: 'model',
   port: 6571,
-  publicBaseUrl: 'https://example.test',
+  uiBaseUrl: 'https://agentgraph.tailnet.example.com',
+  webhookUrl: 'https://example.test/webhooks/github',
   reasoningEffort: 'low' as const,
   resourcesDirectory: '/unused',
 };

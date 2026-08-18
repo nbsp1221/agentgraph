@@ -63,7 +63,11 @@ export function registerGitHubRoutes(
   observed: (dependency: Dependency, status: Observation['status'], detail?: string | null) => void,
   recordRead: () => void,
 ): void {
-  const registration = createGitHubManifestRegistration(config.publicBaseUrl, config.githubAppName);
+  const registration = createGitHubManifestRegistration(
+    config.uiBaseUrl,
+    config.webhookUrl,
+    config.githubAppName,
+  );
   app.get('/healthz', async (c) => {
     if (new URL(c.req.url).search !== '') {
       return c.notFound();
