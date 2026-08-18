@@ -6,6 +6,7 @@ import { healthDescriptionKey } from './health';
 import {
   createFixture,
   fixtureDetailResponse,
+  fixtureEvaluationsResponse,
   fixtureListResponse,
   fixtureScenarios,
   isFixtureControlEnabled,
@@ -102,5 +103,14 @@ describe('fixture harness', () => {
       fixtureDetailResponse(createFixture('finding-still-present'), 229)?.artifact.findings[0]
         ?.state,
     ).toBe('still_present');
+  });
+
+  it('provides typed evaluation histories for the interactive detail fixtures', () => {
+    const evaluations = fixtureEvaluationsResponse(createFixture('evaluation-history'), 241);
+    expect(evaluations?.review.history.map((revision) => revision.id)).toEqual([2, 1]);
+    expect(evaluations?.review.current?.verdict).toBe('mixed');
+    expect(fixtureEvaluationsResponse(createFixture('not-evaluated'), 241)?.review.history).toEqual(
+      [],
+    );
   });
 });

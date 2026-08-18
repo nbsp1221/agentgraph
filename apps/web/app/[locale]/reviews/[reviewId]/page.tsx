@@ -1,5 +1,8 @@
 import { ReviewDetailPage } from '../../../../src/features/reviews/review-detail';
-import { getReviewDetail } from '../../../../src/features/reviews/review-detail-data';
+import {
+  getReviewDetail,
+  getReviewEvaluations,
+} from '../../../../src/features/reviews/review-detail-data';
 import { ReviewDetailErrorState } from '../../../../src/features/reviews/review-detail-error';
 import { reviewReturnQuery } from '../../../../src/features/reviews/review-detail-navigation';
 import { ReviewDetailNotFoundState } from '../../../../src/features/reviews/review-detail-not-found';
@@ -29,7 +32,10 @@ export default async function ReviewDetailRoute({
       />
     );
   }
-  const result = await getReviewDetail(reviewId);
+  const [result, evaluations] = await Promise.all([
+    getReviewDetail(reviewId),
+    getReviewEvaluations(reviewId),
+  ]);
   if (result.kind === 'http-error' && result.status === 404) {
     return <ReviewDetailNotFoundState returnQuery={returnQuery} />;
   }
@@ -38,5 +44,11 @@ export default async function ReviewDetailRoute({
       <ReviewDetailErrorState kind={result.kind} reviewId={reviewId} returnQuery={returnQuery} />
     );
   }
-  return <ReviewDetailPage detail={result.data} returnQuery={returnQuery} />;
+  return (
+    <ReviewDetailPage
+      detail={result.data}
+      returnQuery={returnQuery}
+      evaluations={evaluations.kind === 'ok' ? evaluations.data : null}
+    />
+  );
 }

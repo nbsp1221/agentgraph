@@ -35,6 +35,7 @@ import { useTheme } from 'next-themes';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { useEffect, useState } from 'react';
 import { Link, usePathname, useRouter } from '../i18n/navigation';
+import { confirmDirtyNavigation } from '../lib/dirty-navigation';
 
 export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
@@ -104,6 +105,9 @@ function SidebarMain({ children }: Readonly<{ children: React.ReactNode }>) {
 
   function changeLocale(nextLocale: string) {
     if (nextLocale !== 'en' && nextLocale !== 'ko') {
+      return;
+    }
+    if (!confirmDirtyNavigation()) {
       return;
     }
     document.cookie = `NEXT_LOCALE=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;

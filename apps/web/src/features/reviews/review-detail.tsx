@@ -1,4 +1,4 @@
-import type { ReviewDetail } from '@agentgraph/contracts';
+import type { EvaluationsResponse, ReviewDetail } from '@agentgraph/contracts';
 import { Alert, AlertDescription, AlertTitle } from '@agentgraph/ui/components/alert';
 import { Badge } from '@agentgraph/ui/components/badge';
 import { Button } from '@agentgraph/ui/components/button';
@@ -19,17 +19,19 @@ import { ArrowLeftIcon, ChevronDownIcon, ExternalLinkIcon } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { Link } from '../../i18n/navigation';
 import { CopyShaButton } from './copy-sha';
+import { ReviewEvaluationPanel } from './review-evaluation';
 import { RelativeTime } from './review-list-columns';
 
 export async function ReviewDetailPage({
   detail,
   returnQuery = '',
+  evaluations = null,
 }: {
   detail: ReviewDetail;
   returnQuery?: string | undefined;
+  evaluations?: EvaluationsResponse | null;
 }) {
   const t = await getTranslations('reviewDetail');
-  const common = await getTranslations('common');
   const artifact = detail.artifact;
   const githubUrl = `https://github.com/${detail.repository}/pull/${detail.pull_request_number}`;
   const statusVariant =
@@ -76,7 +78,7 @@ export async function ReviewDetailPage({
       {detail.status !== 'completed' ? <StatusNotice detail={detail} t={t} /> : null}
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
-          <ExecutionMetadata detail={detail} t={t} common={common} />
+          <ExecutionMetadata detail={detail} t={t} />
           <Card>
             <CardHeader>
               <CardTitle>{t('summary')}</CardTitle>
@@ -96,7 +98,7 @@ export async function ReviewDetailPage({
               )}
             </CardContent>
           </Card>
-          <Findings detail={detail} t={t} />
+          <Findings detail={detail} t={t} evaluations={evaluations} />
           <Coverage detail={detail} t={t} />
         </div>
         <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-20 lg:self-start">
@@ -106,19 +108,27 @@ export async function ReviewDetailPage({
               <CardDescription>{t('evaluationReadOnly')}</CardDescription>
             </CardHeader>
             <CardContent>
-              {detail.review_evaluation ? (
-                <Badge variant="secondary">
-                  {t(detail.review_evaluation.verdict ?? 'unable_to_assess')}
-                </Badge>
-              ) : (
-                <p className="text-sm text-muted-foreground">{t('notEvaluated')}</p>
-              )}
-              {detail.artifact.findings.length > 0 ? (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  {detail.artifact.findings.filter((finding) => finding.evaluation !== null).length}
-                  /{detail.artifact.findings.length} {t('findingsEvaluated')}
-                </p>
-              ) : null}
+              <ReviewEvaluationPanel
+                reviewId={detail.id}
+                target="review"
+                current={evaluations ? evaluations.review.current : detail.review_evaluation}
+                history={
+                  evaluations?.review.history ??
+                  (detail.review_evaluation ? [detail.review_evaluation] : [])
+                }
+                disabled={
+                  !detail.artifact.available ||
+                  detail.status !== 'completed' ||
+                  evaluations === null
+                }
+                disabledReason={
+                  !detail.artifact.available
+                    ? 'artifact'
+                    : detail.status !== 'completed'
+                      ? 'incomplete'
+                      : 'evaluations'
+                }
+              />
             </CardContent>
           </Card>
           <ExecutionFacts detail={detail} t={t} />
@@ -128,15 +138,7 @@ export async function ReviewDetailPage({
   );
 }
 
-function ExecutionMetadata({
-  detail,
-  t,
-  common,
-}: {
-  detail: ReviewDetail;
-  t: (key: string) => string;
-  common: (key: string) => string;
-}) {
+function ExecutionMetadata({ detail, t }: { detail: ReviewDetail; t: (key: string) => string }) {
   const values = [
     [t('baseSha'), detail.base_sha ?? '—'],
     [t('headSha'), detail.head_sha],
@@ -150,7 +152,7 @@ function ExecutionMetadata({
     [t('duration'), formatDuration(detail.review_started_at, detail.review_completed_at)],
     [t('created'), <RelativeTime key="created-time" value={detail.created_at} />],
     [t('completed'), <RelativeTime key="completed-time" value={detail.review_completed_at} />],
-    [t('publication'), detail.published_at ? common('completed') : t('notPublished')],
+    [t('publication'), detail.published_at ? t('completed') : t('notPublished')],
   ] as const;
   return (
     <Card>
@@ -203,7 +205,15 @@ function UnavailableState({ detail, t }: { detail: ReviewDetail; t: (key: string
   );
 }
 
-function Findings({ detail, t }: { detail: ReviewDetail; t: (key: string) => string }) {
+function Findings({
+  detail,
+  t,
+  evaluations,
+}: {
+  detail: ReviewDetail;
+  t: (key: string) => string;
+  evaluations: EvaluationsResponse | null;
+}) {
   if (!detail.artifact.available) {
     return null;
   }
@@ -249,10 +259,6 @@ function Findings({ detail, t }: { detail: ReviewDetail; t: (key: string) => str
                   <span className="text-xs text-muted-foreground">{t('confidence')}</span>
                   <Badge variant="outline">{t(finding.confidence)}</Badge>
                   <Badge variant="outline">{t(finding.state ?? 'open')}</Badge>
-                  <Badge variant="secondary">
-                    {t('currentEvaluation')}:{' '}
-                    {finding.evaluation ? t(finding.evaluation) : t('notEvaluated')}
-                  </Badge>
                 </div>
               </div>
               <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">
@@ -270,6 +276,22 @@ function Findings({ detail, t }: { detail: ReviewDetail; t: (key: string) => str
                   <p className="text-muted-foreground">
                     {t('suggestedAction')}: {finding.suggested_action}
                   </p>
+                  <ReviewEvaluationPanel
+                    reviewId={detail.id}
+                    target="finding"
+                    fingerprint={finding.fingerprint}
+                    current={evaluations?.findings[finding.fingerprint]?.current ?? null}
+                    fallbackVerdict={evaluations === null ? finding.evaluation : null}
+                    history={evaluations?.findings[finding.fingerprint]?.history ?? []}
+                    disabled={detail.status !== 'completed' || evaluations === null}
+                    disabledReason={
+                      !detail.artifact.available
+                        ? 'artifact'
+                        : detail.status !== 'completed'
+                          ? 'incomplete'
+                          : 'evaluations'
+                    }
+                  />
                   <Button
                     variant="outline"
                     size="sm"

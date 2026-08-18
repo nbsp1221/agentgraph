@@ -1,5 +1,6 @@
 import type {
   DependencyStatus,
+  EvaluationsResponse,
   ReviewDetail,
   ReviewListItem,
   ReviewListResponse,
@@ -436,5 +437,63 @@ export function fixtureDetailResponse(
         : [],
     },
     review_evaluation: reviewEvaluation,
+  };
+}
+
+export function fixtureEvaluationsResponse(
+  state: FixtureState,
+  reviewId: number,
+): EvaluationsResponse | undefined {
+  const detail = fixtureDetailResponse(state, reviewId);
+  if (!detail) {
+    return undefined;
+  }
+  const reviewCurrent = detail.review_evaluation
+    ? {
+        id: state.scenario === 'evaluation-history' ? 2 : 1,
+        target_type: 'review' as const,
+        finding_fingerprint: null,
+        verdict: detail.review_evaluation.verdict,
+        rationale: 'Fixture evaluation rationale.',
+        source: 'manual' as const,
+        action: 'set' as const,
+        supersedes_id: state.scenario === 'evaluation-history' ? 1 : null,
+        created_at: observedAt,
+      }
+    : null;
+  const reviewHistory =
+    state.scenario === 'evaluation-history'
+      ? [
+          reviewCurrent!,
+          { ...reviewCurrent!, id: 1, verdict: 'useful' as const, supersedes_id: null },
+        ]
+      : reviewCurrent
+        ? [reviewCurrent]
+        : [];
+  const findings = Object.fromEntries(
+    detail.artifact.findings.map((finding, index) => {
+      const evaluated = finding.evaluation !== null;
+      const current = evaluated
+        ? {
+            id: 10 + index,
+            target_type: 'finding' as const,
+            finding_fingerprint: finding.fingerprint,
+            verdict: finding.evaluation,
+            rationale: 'Fixture finding rationale.',
+            source: 'manual' as const,
+            action: 'set' as const,
+            supersedes_id: null,
+            created_at: observedAt,
+          }
+        : null;
+      return [
+        finding.fingerprint,
+        { current, history: current ? [current] : [], truncated: false },
+      ];
+    }),
+  );
+  return {
+    review: { current: reviewCurrent, history: reviewHistory, truncated: false },
+    findings,
   };
 }

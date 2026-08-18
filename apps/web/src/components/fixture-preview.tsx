@@ -35,12 +35,14 @@ import {
   type FixtureState,
   createFixture,
   fixtureDetailResponse,
+  fixtureEvaluationsResponse,
   fixtureListResponse,
   fixtureScenarios,
   isFixtureScenario,
 } from '../fixtures';
 import { type HealthDescriptionKey, healthDescriptionKey } from '../fixtures/health';
 import { Link } from '../i18n/navigation';
+import { FixtureEvaluationTransport } from './fixture-evaluation-transport';
 
 type CommonLabelKey =
   | 'status'
@@ -100,12 +102,27 @@ export function FixtureDetailPreview({
 }) {
   const scenario: FixtureScenario =
     allowControls && isFixtureScenario(requestedScenario) ? requestedScenario : 'default';
-  const detail = fixtureDetailResponse(createFixture(scenario), reviewId);
+  const state = createFixture(scenario);
+  const detail = fixtureDetailResponse(state, reviewId);
   if (!detail) {
     return <ReviewDetailNotFoundState returnQuery={returnQuery} />;
   }
   const resolvedDetail: ReviewDetail = detail;
-  return <ReviewDetailPage detail={resolvedDetail} returnQuery={returnQuery} />;
+  const transportMode =
+    scenario === 'saving-evaluation' || scenario === 'evaluation-save-failure'
+      ? scenario === 'saving-evaluation'
+        ? 'saving'
+        : 'failure'
+      : undefined;
+  return (
+    <FixtureEvaluationTransport mode={transportMode}>
+      <ReviewDetailPage
+        detail={resolvedDetail}
+        returnQuery={returnQuery}
+        evaluations={fixtureEvaluationsResponse(state, reviewId) ?? null}
+      />
+    </FixtureEvaluationTransport>
+  );
 }
 
 function FixtureSelector({
