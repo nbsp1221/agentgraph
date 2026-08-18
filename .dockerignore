@@ -1,0 +1,12 @@
+.git
+.gitignore
+.agentgraph
+.internal
+coverage
+dist
+logs
+node_modules
+tests
+var
+*.log
+*.tmp

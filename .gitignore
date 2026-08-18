@@ -1,30 +1,36 @@
-# Environment variables
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+
+# Runtime state
+.agentgraph/
+.internal/
+var/
+
+# Local deployment overrides
+compose.override.yaml
+
+# Environment and secrets
 .env
+.env.*
+!.env.example
 
-# Local files directory
-/files/
-
-# Log files
+# Logs and temporary files
 *.log
 logs/
-
-# Temporary files
 *.tmp
 *.swp
 *.swo
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.code-workspace
 .DS_Store
 Thumbs.db
 
-# IDE specific files
-.idea/
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-*.code-workspace
-
-# Backup files
+# Backups
 *.bak
 *.backup
 *~

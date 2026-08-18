@@ -1,0 +1,32 @@
+name: agentgraph
+
+services:
+  agentgraph:
+    build:
+      context: .
+    image: agentgraph:local
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 2m
+    env_file:
+      - .env
+    environment:
+      APP_HOST: 0.0.0.0
+    ports:
+      - '${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-6571}:${APP_PORT:-6571}'
+    volumes:
+      - ${APP_DATA_DIRECTORY:?Set APP_DATA_DIRECTORY in .env}:${APP_DATA_DIRECTORY:?Set APP_DATA_DIRECTORY in .env}
+      - ${SANDBOX_CLI_PATH:-/usr/bin/sbx}:/usr/local/bin/sbx:ro
+      - ${HOME}/.config/com.docker.sandboxes:/home/node/.config/com.docker.sandboxes
+      - ${HOME}/.config/sandboxes:/home/node/.config/sandboxes
+      - ${HOME}/.local/state/sandboxes/sandboxes/sandboxd:/home/node/.local/state/sandboxes/sandboxes/sandboxd:ro
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget --quiet --output-document=/dev/null http://127.0.0.1:${APP_PORT:-6571}/healthz',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

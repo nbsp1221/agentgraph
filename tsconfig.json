@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noEmit": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "skipLibCheck": true,
+    "types": ["node", "vitest/globals"]
+  },
+  "include": [
+    "src",
+    "tests",
+    "eslint.config.js",
+    "oxfmt.config.ts",
+    "oxlint.config.ts",
+    "tsdown.config.ts",
+    "vitest.config.ts"
+  ]
+}

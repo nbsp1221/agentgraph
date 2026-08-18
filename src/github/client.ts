@@ -1,0 +1,679 @@
+import { App } from '@octokit/app';
+import type { ReviewInlineComment } from '../review/publication.js';
+import type { ReviewResult } from '../review/result.js';
+import { renderReview } from '../review/result.js';
+import type { GitHubAppCredentials } from './credentials.js';
+
+const maximumGitHubBodyCharacters = 60_000;
+const statusCommentMarker = '<!-- retn0-assistant:review-status -->';
+
+export interface PullRequestDetails {
+  baseRef: string;
+  baseSha: string;
+  cloneUrl: string;
+  defaultBranch: string;
+  draft: boolean;
+  headSha: string;
+  repositoryId: number;
+  state: 'closed' | 'open';
+  title: string;
+}
+
+export type CheckConclusion = 'cancelled' | 'failure' | 'neutral' | 'success' | 'timed_out';
+
+export interface CheckOutput {
+  summary: string;
+  title: string;
+}
+
+export class GitHubAppClient {
+  readonly #app: App;
+
+  constructor(credentials: GitHubAppCredentials) {
+    this.#app = new App({
+      appId: credentials.appId,
+      privateKey: credentials.privateKey,
+    });
+  }
+
+  async getPullRequest(input: {
+    installationId: number;
+    pullRequestNumber: number;
+    repository: string;
+  }): Promise<PullRequestDetails> {
+    const [owner, repository] = splitRepository(input.repository);
+    const octokit = await this.#app.getInstallationOctokit(input.installationId);
+    const response = await this.#withRetry(() =>
+      octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
+        owner,
+        pull_number: input.pullRequestNumber,
+        repo: repository,
+      }),
+    );
+
+    return {
+      baseRef: response.data.base.ref,
+      baseSha: response.data.base.sha,
+      cloneUrl: response.data.base.repo.clone_url,
+      defaultBranch: response.data.base.repo.default_branch,
+      draft: response.data.draft ?? false,
+      headSha: response.data.head.sha,
+      repositoryId: Number(response.data.base.repo.id),
+      state: response.data.state,
+      title: response.data.title,
+    };
+  }
+
+  async getRepositoryTextFile(input: {
+    installationId: number;
+    path: string;
+    ref: string;
+    repository: string;
+  }): Promise<string | undefined> {
+    const [owner, repository] = splitRepository(input.repository);
+    const octokit = await this.#app.getInstallationOctokit(input.installationId);
+    try {
+      const response = await this.#withRetry(() =>
+        octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
+          owner,
+          path: input.path,
+          ref: input.ref,
+          repo: repository,
+        }),
+      );
+      if (Array.isArray(response.data) || !('content' in response.data)) {
+        throw new Error(`repository policy path is not a file: ${input.path}`);
+      }
+      return Buffer.from(response.data.content, 'base64').toString('utf8');
+    } catch (error) {
+      if (githubErrorStatus(error) === 404) {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  async createRepositoryReadToken(input: {
+    allowedOwnerId: number;
+    installationId: number;
+    repositoryId: number;
+  }): Promise<string> {
+    const installation = await this.#app.octokit.request(
+      'GET /app/installations/{installation_id}',
+      { installation_id: input.installationId },
+    );
+    if (
+      installation.data.account === null ||
+      installation.data.account.id !== input.allowedOwnerId
+    ) {
+      throw new Error(`installation ${input.installationId} is not owned by the allowed account`);
+    }
+    const response = await this.#app.octokit.request(
+      'POST /app/installations/{installation_id}/access_tokens',
+      repositoryReadTokenRequest(input.installationId, input.repositoryId),
+    );
+    return response.data.token;
+  }
+
+  async actorCanManagePullRequest(input: {
+    actor: string;
+    installationId: number;
+    repository: string;
+  }): Promise<boolean> {
+    const [owner, repository] = splitRepository(input.repository);
+    const octokit = await this.#app.getInstallationOctokit(input.installationId);
+    const response = await this.#withRetry(() =>
+      octokit.request('GET /repos/{owner}/{repo}/collaborators/{username}/permission', {
+        owner,
+        repo: repository,
+        username: input.actor,
+      }),
+    );
+    return canManageRepositoryRole(response.data.role_name ?? response.data.permission);
+  }
+
+  async createCommandReply(input: {
+    body: string;
+    deliveryId: string;
+    installationId: number;
+    pullRequestNumber: number;
+    repository: string;
+  }): Promise<number> {
+    const [owner, repository] = splitRepository(input.repository);
+    const octokit = await this.#app.getInstallationOctokit(input.installationId);
+    const marker = commandReplyMarker(input.deliveryId);
+    const existingId = await this.#findIssueComment({
+      marker,
+      octokit,
+      owner,
+      pullRequestNumber: input.pullRequestNumber,
+      repository,
+    });
+    if (existingId !== undefined) {
+      return existingId;
+    }
+
+    const body = bodyWithMarker(input.body, marker);
+    try {
+      const response = await octokit.request(
+        'POST /repos/{owner}/{repo}/issues/{issue_number}/comments',
+        {
+          body,
+          issue_number: input.pullRequestNumber,
+          owner,
+          repo: repository,
+        },
+      );
+      return Number(response.data.id);
+    } catch (error) {
+      const reconciledId = await this.#findIssueComment({
+        marker,
+        octokit,
+        owner,
+        pullRequestNumber: input.pullRequestNumber,
+        repository,
+      });
+      if (reconciledId !== undefined) {
+        return reconciledId;
+      }
+      throw error;
+    }
+  }
+
+  async createQueuedCheckRun(input: {
+    headSha: string;
+    installationId: number;
+    jobId: number;
+    pullRequestNumber: number;
+    repository: string;
+  }): Promise<number> {
+    const [owner, repository] = splitRepository(input.repository);
+    const octokit = await this.#app.getInstallationOctokit(input.installationId);
+    const externalId = `review-job:${input.jobId}`;
+    const existingId = await this.#findCheckRun({
+      externalId,
+      headSha: input.headSha,
+      octokit,
+      owner,
+      repository,
+    });
+    if (existingId !== undefined) {
+      return existingId;
+    }
+
+    try {
+      const response = await octokit.request('POST /repos/{owner}/{repo}/check-runs', {
+        details_url: `https://github.com/${input.repository}/pull/${input.pullRequestNumber}`,
+        external_id: externalId,
+        head_sha: input.headSha,
+        name: 'retn0-assistant / code review',
+        output: {
+          summary: 'Waiting for the review worker to start.',
+          title: 'Code review queued',
+        },
+        owner,
+        repo: repository,
+        status: 'queued',
+      });
+      return Number(response.data.id);
+    } catch (error) {
+      const reconciledId = await this.#findCheckRun({
+        externalId,
+        headSha: input.headSha,
+        octokit,
+        owner,
+        repository,
+      });
+      if (reconciledId !== undefined) {
+        return reconciledId;
+      }
+      throw error;
+    }
+  }
+
+  async startCheckRun(input: {
+    checkRunId: number;
+    installationId: number;
+    repository: string;
+  }): Promise<void> {
+    await this.#updateCheckRun({
+      ...input,
+      output: {
+        summary: 'Preparing an isolated environment and running the Codex review.',
+        title: 'Code review in progress',
+      },
+      status: 'in_progress',
+    });
+  }
+
+  async createStatusComment(input: {
+    body: string;
+    installationId: number;
+    pullRequestNumber: number;
+    repository: string;
+  }): Promise<number> {
+    const [owner, repository] = splitRepository(input.repository);
+    const octokit = await this.#app.getInstallationOctokit(input.installationId);
+    const body = limitGitHubBody(input.body);
+    try {
+      const response = await octokit.request(
+        'POST /repos/{owner}/{repo}/issues/{issue_number}/comments',
+        {
+          body,
+          issue_number: input.pullRequestNumber,
+          owner,
+          repo: repository,
+        },
+      );
+      return Number(response.data.id);
+    } catch (error) {
+      const reconciledId = await this.findStatusComment(input);
+      if (reconciledId !== undefined) {
+        return reconciledId;
+      }
+      throw error;
+    }
+  }
+
+  async findStatusComment(input: {
+    installationId: number;
+    pullRequestNumber: number;
+    repository: string;
+  }): Promise<number | undefined> {
+    const [owner, repository] = splitRepository(input.repository);
+    const octokit = await this.#app.getInstallationOctokit(input.installationId);
+    return this.#findIssueComment({
+      marker: statusCommentMarker,
+      octokit,
+      owner,
+      pullRequestNumber: input.pullRequestNumber,
+      repository,
+    });
+  }
+
+  async updateStatusComment(input: {
+    body: string;
+    commentId: number;
+    installationId: number;
+    repository: string;
+  }): Promise<void> {
+    const [owner, repository] = splitRepository(input.repository);
+    const octokit = await this.#app.getInstallationOctokit(input.installationId);
+    await this.#withRetry(() =>
+      octokit.request('PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}', {
+        body: limitGitHubBody(input.body),
+        comment_id: input.commentId,
+        owner,
+        repo: repository,
+      }),
+    );
+  }
+
+  async completeCheckRun(input: {
+    checkRunId: number;
+    conclusion: CheckConclusion;
+    detailsUrl?: string;
+    installationId: number;
+    output: CheckOutput;
+    repository: string;
+  }): Promise<void> {
+    const [owner, repository] = splitRepository(input.repository);
+    const octokit = await this.#app.getInstallationOctokit(input.installationId);
+    const detailsUrl = input.detailsUrl === undefined ? {} : { details_url: input.detailsUrl };
+    await this.#withRetry(() =>
+      octokit.request('PATCH /repos/{owner}/{repo}/check-runs/{check_run_id}', {
+        check_run_id: input.checkRunId,
+        completed_at: new Date().toISOString(),
+        conclusion: input.conclusion,
+        ...detailsUrl,
+        output: input.output,
+        owner,
+        repo: repository,
+        status: 'completed',
+      }),
+    );
+  }
+
+  async publishReview(input: {
+    expectedHeadSha: string;
+    installationId: number;
+    inlineComments?: ReviewInlineComment[];
+    inlineFindingIndexes?: ReadonlySet<number>;
+    jobId: number;
+    pullRequestNumber: number;
+    repository: string;
+    result: ReviewResult;
+    signal: AbortSignal;
+  }): Promise<number> {
+    const [owner, repository] = splitRepository(input.repository);
+    const octokit = await this.#app.getInstallationOctokit(input.installationId);
+    const pullRequest = await this.#withRetry(() =>
+      octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
+        owner,
+        pull_number: input.pullRequestNumber,
+        repo: repository,
+      }),
+    );
+    if (pullRequest.data.head.sha !== input.expectedHeadSha) {
+      throw new Error(
+        `pull request head changed from ${input.expectedHeadSha} to ${pullRequest.data.head.sha}`,
+      );
+    }
+
+    const marker = reviewPublicationMarker(input.jobId, input.expectedHeadSha);
+    const existingId = await this.#findReview({
+      marker,
+      octokit,
+      owner,
+      pullRequestNumber: input.pullRequestNumber,
+      repository,
+    });
+    if (existingId !== undefined) {
+      return existingId;
+    }
+
+    const inlineComments = input.inlineComments ?? [];
+    const body = bodyWithMarker(renderReview(input.result, input.inlineFindingIndexes), marker);
+    input.signal.throwIfAborted();
+    try {
+      const review = await octokit.request(
+        'POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews',
+        {
+          body,
+          comments: inlineComments.map((comment) => ({
+            body: limitGitHubBody(comment.body),
+            line: comment.line,
+            path: comment.path,
+            side: 'RIGHT' as const,
+          })),
+          commit_id: input.expectedHeadSha,
+          event: 'COMMENT',
+          owner,
+          pull_number: input.pullRequestNumber,
+          request: { signal: input.signal },
+          repo: repository,
+        },
+      );
+      return Number(review.data.id);
+    } catch (error) {
+      const reconciledId = await this.#findReview({
+        marker,
+        octokit,
+        owner,
+        pullRequestNumber: input.pullRequestNumber,
+        repository,
+      });
+      if (reconciledId !== undefined) {
+        return reconciledId;
+      }
+      if (githubErrorStatus(error) === 422 && inlineComments.length > 0) {
+        input.signal.throwIfAborted();
+        return this.#publishSummaryFallback({
+          body: bodyWithMarker(renderReview(input.result), marker),
+          expectedHeadSha: input.expectedHeadSha,
+          marker,
+          octokit,
+          owner,
+          pullRequestNumber: input.pullRequestNumber,
+          repository,
+          signal: input.signal,
+        });
+      }
+      throw error;
+    }
+  }
+
+  async #findIssueComment(input: {
+    marker: string;
+    octokit: Awaited<ReturnType<App['getInstallationOctokit']>>;
+    owner: string;
+    pullRequestNumber: number;
+    repository: string;
+  }): Promise<number | undefined> {
+    for (let page = 1; ; page += 1) {
+      const response = await this.#withRetry(() =>
+        input.octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+          issue_number: input.pullRequestNumber,
+          owner: input.owner,
+          page,
+          per_page: 100,
+          repo: input.repository,
+        }),
+      );
+      const comment = response.data.find((candidate) => candidate.body?.includes(input.marker));
+      if (comment !== undefined) {
+        return Number(comment.id);
+      }
+      if (response.data.length < 100) {
+        return undefined;
+      }
+    }
+  }
+
+  async #updateCheckRun(input: {
+    checkRunId: number;
+    installationId: number;
+    output: CheckOutput;
+    repository: string;
+    status: 'in_progress';
+  }): Promise<void> {
+    const [owner, repository] = splitRepository(input.repository);
+    const octokit = await this.#app.getInstallationOctokit(input.installationId);
+    await this.#withRetry(() =>
+      octokit.request('PATCH /repos/{owner}/{repo}/check-runs/{check_run_id}', {
+        check_run_id: input.checkRunId,
+        output: input.output,
+        owner,
+        repo: repository,
+        started_at: new Date().toISOString(),
+        status: input.status,
+      }),
+    );
+  }
+
+  async #findCheckRun(input: {
+    externalId: string;
+    headSha: string;
+    octokit: Awaited<ReturnType<App['getInstallationOctokit']>>;
+    owner: string;
+    repository: string;
+  }): Promise<number | undefined> {
+    for (let page = 1; ; page += 1) {
+      const response = await this.#withRetry(() =>
+        input.octokit.request('GET /repos/{owner}/{repo}/commits/{ref}/check-runs', {
+          owner: input.owner,
+          page,
+          per_page: 100,
+          ref: input.headSha,
+          repo: input.repository,
+        }),
+      );
+      const checkRun = response.data.check_runs.find(
+        (candidate) => candidate.external_id === input.externalId,
+      );
+      if (checkRun !== undefined) {
+        return Number(checkRun.id);
+      }
+      if (response.data.check_runs.length < 100) {
+        return undefined;
+      }
+    }
+  }
+
+  async #findReview(input: {
+    marker: string;
+    octokit: Awaited<ReturnType<App['getInstallationOctokit']>>;
+    owner: string;
+    pullRequestNumber: number;
+    repository: string;
+  }): Promise<number | undefined> {
+    for (let page = 1; ; page += 1) {
+      const response = await this.#withRetry(() =>
+        input.octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews', {
+          owner: input.owner,
+          page,
+          per_page: 100,
+          pull_number: input.pullRequestNumber,
+          repo: input.repository,
+        }),
+      );
+      const review = response.data.find((candidate) => candidate.body?.includes(input.marker));
+      if (review !== undefined) {
+        return Number(review.id);
+      }
+      if (response.data.length < 100) {
+        return undefined;
+      }
+    }
+  }
+
+  async #publishSummaryFallback(input: {
+    body: string;
+    expectedHeadSha: string;
+    marker: string;
+    octokit: Awaited<ReturnType<App['getInstallationOctokit']>>;
+    owner: string;
+    pullRequestNumber: number;
+    repository: string;
+    signal: AbortSignal;
+  }): Promise<number> {
+    input.signal.throwIfAborted();
+    try {
+      const review = await input.octokit.request(
+        'POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews',
+        {
+          body: input.body,
+          commit_id: input.expectedHeadSha,
+          event: 'COMMENT',
+          owner: input.owner,
+          pull_number: input.pullRequestNumber,
+          request: { signal: input.signal },
+          repo: input.repository,
+        },
+      );
+      return Number(review.data.id);
+    } catch (error) {
+      const reconciledId = await this.#findReview(input);
+      if (reconciledId !== undefined) {
+        return reconciledId;
+      }
+      throw error;
+    }
+  }
+
+  async #withRetry<T>(operation: () => Promise<T>): Promise<T> {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await operation();
+      } catch (error) {
+        const delayMilliseconds = githubRetryDelayMilliseconds(error, attempt);
+        if (delayMilliseconds === undefined || attempt >= 2) {
+          throw error;
+        }
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, delayMilliseconds);
+        });
+      }
+    }
+  }
+}
+
+export function repositoryReadTokenRequest(installationId: number, repositoryId: number) {
+  return {
+    installation_id: installationId,
+    permissions: { contents: 'read' as const },
+    repository_ids: [repositoryId],
+  };
+}
+
+export function limitGitHubBody(
+  value: string,
+  maximumCharacters = maximumGitHubBodyCharacters,
+): string {
+  if (value.length <= maximumCharacters) {
+    return value;
+  }
+  const notice = '\n\n_Review output was truncated to fit GitHub limits._';
+  if (notice.length >= maximumCharacters) {
+    return notice.slice(0, maximumCharacters);
+  }
+  return `${value.slice(0, Math.max(0, maximumCharacters - notice.length))}${notice}`;
+}
+
+export function githubRetryDelayMilliseconds(error: unknown, attempt: number): number | undefined {
+  const record = asRecord(error);
+  const response = asRecord(record?.response);
+  const headers = asRecord(response?.headers);
+  const status = typeof record?.status === 'number' ? record.status : undefined;
+  const retryAfterSeconds = numericHeader(headers?.['retry-after']);
+  if (status === 429 || status === 502 || status === 503 || status === 504) {
+    return Math.min(
+      30_000,
+      retryAfterSeconds === undefined ? 500 * 2 ** attempt : retryAfterSeconds * 1_000,
+    );
+  }
+  if (
+    status === 403 &&
+    (retryAfterSeconds !== undefined || String(headers?.['x-ratelimit-remaining']) === '0')
+  ) {
+    const resetAtSeconds = numericHeader(headers?.['x-ratelimit-reset']);
+    const resetDelay =
+      resetAtSeconds === undefined ? undefined : resetAtSeconds * 1_000 - Date.now();
+    return Math.min(
+      30_000,
+      Math.max(
+        0,
+        retryAfterSeconds === undefined
+          ? (resetDelay ?? 1_000 * 2 ** attempt)
+          : retryAfterSeconds * 1_000,
+      ),
+    );
+  }
+
+  const code = typeof record?.code === 'string' ? record.code : undefined;
+  return code !== undefined && ['EAI_AGAIN', 'ECONNRESET', 'ETIMEDOUT'].includes(code)
+    ? 500 * 2 ** attempt
+    : undefined;
+}
+
+export function canManageRepositoryRole(role: string): boolean {
+  return ['admin', 'maintain', 'triage', 'write'].includes(role);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === 'object' && value !== null
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function numericHeader(value: unknown): number | undefined {
+  const parsed =
+    typeof value === 'string' || typeof value === 'number' ? Number(value) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function githubErrorStatus(error: unknown): number | undefined {
+  const record = asRecord(error);
+  return typeof record?.status === 'number' ? record.status : undefined;
+}
+
+function reviewPublicationMarker(jobId: number, headSha: string): string {
+  return `<!-- retn0-assistant:review-publication:${jobId}:${headSha} -->`;
+}
+
+function commandReplyMarker(deliveryId: string): string {
+  return `<!-- retn0-assistant:command-reply:${deliveryId} -->`;
+}
+
+function bodyWithMarker(body: string, marker: string): string {
+  const suffix = `\n\n${marker}`;
+  return `${limitGitHubBody(body, maximumGitHubBodyCharacters - suffix.length)}${suffix}`;
+}
+
+function splitRepository(value: string): [string, string] {
+  const [owner, repository, ...rest] = value.split('/');
+  if (owner === undefined || repository === undefined || rest.length > 0) {
+    throw new Error(`invalid repository: ${value}`);
+  }
+  return [owner, repository];
+}

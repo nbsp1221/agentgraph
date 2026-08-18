@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "changed_files": { "type": "array", "items": { "type": "string" } },
+        "reviewed_files": { "type": "array", "items": { "type": "string" } },
+        "omitted_files": { "type": "array", "items": { "type": "string" } },
+        "complete": { "type": "boolean" }
+      },
+      "required": ["changed_files", "reviewed_files", "omitted_files", "complete"]
+    },
+    "finding_updates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["fixed", "still_present"]
+          },
+          "evidence": { "type": "string" }
+        },
+        "required": ["fingerprint", "status", "evidence"]
+      }
+    },
+    "summary": { "type": "string" },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low"]
+          },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "file": { "type": "string" },
+          "line": { "type": "integer", "minimum": 1 },
+          "title": { "type": "string" },
+          "explanation": { "type": "string" },
+          "evidence": { "type": "string" },
+          "suggested_action": { "type": "string" }
+        },
+        "required": [
+          "severity",
+          "confidence",
+          "file",
+          "line",
+          "title",
+          "explanation",
+          "evidence",
+          "suggested_action"
+        ]
+      }
+    },
+    "tests_run": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "command": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["passed", "failed", "not_run"]
+          },
+          "evidence": { "type": "string" }
+        },
+        "required": ["command", "status", "evidence"]
+      }
+    },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": ["summary", "findings", "finding_updates", "coverage", "tests_run", "limitations"]
+}
