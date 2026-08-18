@@ -6,9 +6,11 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "pretypecheck": "next typegen",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:unit": "vitest run"
   },
   "dependencies": {
@@ -25,6 +27,7 @@
   },
   "devDependencies": {
     "@agentgraph/typescript-config": "workspace:*",
+    "@playwright/test": "1.62.1",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "24.13.3",
     "@types/react": "19.2.15",

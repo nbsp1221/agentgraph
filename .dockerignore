@@ -11,6 +11,8 @@ node_modules
 **/.next
 **/.turbo
 **/dist
+**/test-results
+**/next-env.d.ts
 **/*.tsbuildinfo
 tests
 var

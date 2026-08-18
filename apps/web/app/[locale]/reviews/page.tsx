@@ -9,7 +9,10 @@ export default async function ReviewsPage({
   const params = await searchParams;
   const requestedScenario = typeof params.fixture === 'string' ? params.fixture : undefined;
 
-  if (process.env.NODE_ENV === 'development') {
+  const useFixture =
+    process.env.NODE_ENV === 'development' &&
+    (requestedScenario !== undefined || process.env.REVIEWER_INTERNAL_URL === undefined);
+  if (useFixture) {
     const [{ FixturePreview }, { isFixtureControlEnabled }] = await Promise.all([
       import('../../../src/components/fixture-preview'),
       import('../../../src/fixtures'),

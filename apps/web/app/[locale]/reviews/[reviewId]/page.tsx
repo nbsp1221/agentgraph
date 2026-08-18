@@ -21,7 +21,10 @@ export default async function ReviewDetailRoute({
     return <ReviewDetailNotFoundState returnQuery={returnQuery} />;
   }
   const fixture = typeof query.fixture === 'string' ? query.fixture : undefined;
-  if (process.env.NODE_ENV === 'development') {
+  const useFixture =
+    process.env.NODE_ENV === 'development' &&
+    (fixture !== undefined || process.env.REVIEWER_INTERNAL_URL === undefined);
+  if (useFixture) {
     const { FixtureDetailPreview } = await import('../../../../src/components/fixture-preview');
     return (
       <FixtureDetailPreview

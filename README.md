@@ -29,6 +29,7 @@ Install and validate the current skeleton:
 
 ```sh
 corepack pnpm install
+corepack pnpm --filter @agentgraph/web exec playwright install chromium
 corepack pnpm check
 ```
 
@@ -120,6 +121,22 @@ github-assistant.example.com {
 The repository does not modify or reload an operating Caddy configuration. For local testing, the ignored `compose.override.yaml` connects both services to the existing external `caddy-network`; verify that network and the current Caddy aliases before use. Keep any host-specific Caddy file outside this repository or in an ignored local deployment directory.
 
 Before changing an operating Caddy route, save a backup, run `caddy validate --config <config>`, and inspect the rendered route priority. After explicit approval, use a graceful reload and smoke test both `https://<host>/en/reviews` and same-origin `/api/v1/status`; also verify an existing virtual host before and after the reload. Do not stop the Caddy container or reload unrelated virtual hosts. The sandbox daemon directory is mounted read-only rather than binding only the socket file, so a daemon restart can replace the socket without leaving the reviewer attached to a stale inode. Starting and supervising the host `sandboxd` process is an infrastructure prerequisite and is intentionally outside AgentGraph's deployment scope.
+
+Before an image or schema upgrade, stop only the reviewer so SQLite closes cleanly, copy every `state.sqlite*` file to a timestamped directory, and record checksums. Keep the previous image and Compose file until the upgraded reviewer, web UI, and representative review artifacts have passed smoke tests.
+
+```sh
+set -a
+. ./.env
+set +a
+backup_directory="${APP_DATA_DIRECTORY}/backups/$(date +%Y%m%d-%H%M%S)"
+docker compose stop reviewer
+mkdir -p "$backup_directory"
+cp -a "${APP_DATA_DIRECTORY}"/state.sqlite* "$backup_directory"/
+sha256sum "$backup_directory"/state.sqlite* > "$backup_directory/SHA256SUMS"
+docker compose up -d reviewer
+```
+
+To roll back, stop the reviewer again, verify `SHA256SUMS`, restore the saved `state.sqlite*` files, restore the previous image and Compose file, and then start the reviewer. Migrations 2 and 3 are additive, but the database backup remains the authoritative recovery point; never run a destructive downgrade against the only copy.
 
 ## License
 
