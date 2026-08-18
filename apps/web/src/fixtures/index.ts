@@ -1,4 +1,9 @@
-import type { DependencyStatus, ReviewListItem, ReviewListResponse } from '@agentgraph/contracts';
+import type {
+  DependencyStatus,
+  ReviewDetail,
+  ReviewListItem,
+  ReviewListResponse,
+} from '@agentgraph/contracts';
 
 export const fixtureScenarios = [
   'default',
@@ -11,6 +16,9 @@ export const fixtureScenarios = [
   'list-error',
   'pagination',
   'running',
+  'queued',
+  'cancelled',
+  'unknown',
   'completed-zero-findings',
   'completed-multiple-findings',
   'failed',
@@ -25,6 +33,9 @@ export const fixtureScenarios = [
   'saving-evaluation',
   'evaluation-save-failure',
   'stress',
+  'finding-open',
+  'finding-fixed',
+  'finding-still-present',
 ] as const;
 
 export type FixtureScenario = (typeof fixtureScenarios)[number];
@@ -192,6 +203,16 @@ export function createFixture(scenario: FixtureScenario = 'default'): FixtureSta
       total_findings: 0,
     });
   }
+  if (scenario === 'queued' || scenario === 'cancelled' || scenario === 'unknown') {
+    state.activeReview = review({
+      id: scenario === 'queued' ? 232 : scenario === 'cancelled' ? 231 : 230,
+      status: scenario,
+      findings_count: null,
+      highest_severity: null,
+      completed_at: null,
+      total_findings: 0,
+    });
+  }
   if (scenario === 'completed-zero-findings') {
     state.activeReview = review({
       id: 235,
@@ -263,6 +284,13 @@ export function createFixture(scenario: FixtureScenario = 'default'): FixtureSta
       total_findings: 3,
     });
   }
+  if (
+    scenario === 'finding-open' ||
+    scenario === 'finding-fixed' ||
+    scenario === 'finding-still-present'
+  ) {
+    state.activeReview = review({ id: 229, findings_count: 2, total_findings: 2 });
+  }
 
   return state;
 }
@@ -305,5 +333,108 @@ export function fixtureListResponse(
     page_size: 20,
     total_items: totalItems,
     total_pages: totalPages,
+  };
+}
+
+export function fixtureDetailResponse(
+  state: FixtureState,
+  reviewId: number,
+): ReviewDetail | undefined {
+  const item =
+    state.activeReview?.id === reviewId
+      ? state.activeReview
+      : state.reviews.find((candidate) => candidate.id === reviewId);
+  if (!item) {
+    return undefined;
+  }
+  const artifactAvailable = item.status === 'completed' && state.scenario !== 'missing-artifact';
+  const findings = artifactAvailable
+    ? Array.from({ length: item.findings_count ?? 0 }, (_, index) => ({
+        fingerprint: (index + 1).toString(16).padStart(16, '0'),
+        severity: index === 0 ? (item.highest_severity ?? 'medium') : 'low',
+        confidence: 'high' as const,
+        title: `Finding ${index + 1}: verify the review boundary`,
+        explanation: 'The persisted finding explanation is shown without translation.',
+        suggested_action: 'Confirm the boundary and add a regression test.',
+        evidence: `Evidence excerpt for finding ${index + 1}.`,
+        file: `src/review/finding-${index + 1}.ts`,
+        line: 40 + index,
+        state:
+          state.scenario === 'finding-fixed'
+            ? ('fixed' as const)
+            : state.scenario === 'finding-still-present'
+              ? ('still_present' as const)
+              : ('open' as const),
+        evaluation:
+          item.evaluated_findings > index && item.review_evaluation !== null
+            ? ('valid' as const)
+            : null,
+      }))
+    : [];
+  const reviewEvaluation = item.review_evaluation
+    ? {
+        id: 1,
+        target_type: 'review' as const,
+        finding_fingerprint: null,
+        verdict: item.review_evaluation,
+        rationale: 'Fixture evaluation rationale.',
+        source: 'manual' as const,
+        action: 'set' as const,
+        supersedes_id: null,
+        created_at: observedAt,
+      }
+    : null;
+  const coverage = artifactAvailable
+    ? {
+        changed_files: ['src/review/worker.ts', 'src/review/history.ts'],
+        reviewed_files: ['src/review/worker.ts'],
+        omitted_files: state.scenario === 'incomplete-coverage' ? ['src/github/client.ts'] : [],
+        complete: state.scenario !== 'incomplete-coverage',
+      }
+    : null;
+  return {
+    id: item.id,
+    repository: item.repository,
+    pull_request_number: item.pull_request_number,
+    pull_request_title: item.pull_request_title,
+    head_sha: item.head_sha,
+    base_sha: item.base_sha,
+    installation_id: 42,
+    action: 'opened',
+    status: item.status,
+    attempt: 1,
+    model: item.model,
+    reasoning: item.reasoning,
+    prompt_version: 'review-v1',
+    prompt_hash: 'prompt-fixture-hash',
+    schema_version: 'review-schema-v1',
+    schema_hash: 'schema-fixture-hash',
+    created_at: item.created_at,
+    review_started_at: item.started_at,
+    review_completed_at: item.completed_at,
+    publication_started_at: item.completed_at,
+    published_at: item.status === 'completed' ? item.completed_at : null,
+    published_review_id: item.status === 'completed' ? item.id + 1000 : null,
+    error_code: item.status === 'failed' ? 'SANDBOX_UNAVAILABLE' : null,
+    error_excerpt: item.status === 'failed' ? 'Sandbox health check timed out.' : null,
+    superseded_by_job_id: item.status === 'superseded' ? item.id + 1 : null,
+    artifact: {
+      available: artifactAvailable,
+      content_hash: artifactAvailable ? 'artifact-fixture-hash' : null,
+      unavailable_reason: artifactAvailable
+        ? null
+        : item.status === 'completed'
+          ? 'MISSING'
+          : 'NOT_READY',
+      summary: artifactAvailable ? 'The reviewer completed the persisted fixture summary.' : null,
+      findings,
+      coverage,
+      limitations:
+        state.scenario === 'incomplete-coverage' ? ['Some changed files were omitted.'] : [],
+      tests_run: artifactAvailable
+        ? [{ command: 'pnpm test', status: 'passed' as const, evidence: 'Fixture test evidence.' }]
+        : [],
+    },
+    review_evaluation: reviewEvaluation,
   };
 }

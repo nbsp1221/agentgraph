@@ -16,7 +16,12 @@ type TableFeatures = ReturnType<typeof tableFeatures>;
 
 const columnHelper = createColumnHelper<TableFeatures, ReviewListItem>();
 
-export function createReviewColumns(t: Translation, common: Translation) {
+export function createReviewColumns(
+  t: Translation,
+  common: Translation,
+  detailScenario?: string,
+  returnQuery?: string,
+) {
   return [
     columnHelper.display({
       id: 'repository',
@@ -26,7 +31,7 @@ export function createReviewColumns(t: Translation, common: Translation) {
         const item = row.original;
         return (
           <Link
-            href={`/reviews/${item.id}`}
+            href={`/reviews/${item.id}${returnQuery ? `?${returnQuery}` : detailScenario ? `?fixture=${detailScenario}` : ''}`}
             className="block min-w-0"
             onClick={(event) => event.stopPropagation()}
           >

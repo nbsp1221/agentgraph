@@ -1,3 +1,4 @@
+import type { ReviewDetail } from '@agentgraph/contracts';
 import { Alert, AlertDescription, AlertTitle } from '@agentgraph/ui/components/alert';
 import { Badge } from '@agentgraph/ui/components/badge';
 import {
@@ -26,11 +27,14 @@ import {
 import { Skeleton } from '@agentgraph/ui/components/skeleton';
 import { ActivityIcon, CircleAlertIcon, CircleCheckIcon, CircleXIcon } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import { ReviewDetailPage } from '../features/reviews/review-detail';
+import { ReviewDetailNotFoundState } from '../features/reviews/review-detail-not-found';
 import { ReviewList } from '../features/reviews/review-list';
 import {
   type FixtureScenario,
   type FixtureState,
   createFixture,
+  fixtureDetailResponse,
   fixtureListResponse,
   fixtureScenarios,
   isFixtureScenario,
@@ -81,6 +85,27 @@ export async function FixturePreview({
       <ReviewStateCard state={state} t={t} searchParams={searchParams} />
     </div>
   );
+}
+
+export function FixtureDetailPreview({
+  requestedScenario,
+  reviewId,
+  allowControls,
+  returnQuery,
+}: {
+  requestedScenario?: string | undefined;
+  reviewId: number;
+  allowControls: boolean;
+  returnQuery?: string;
+}) {
+  const scenario: FixtureScenario =
+    allowControls && isFixtureScenario(requestedScenario) ? requestedScenario : 'default';
+  const detail = fixtureDetailResponse(createFixture(scenario), reviewId);
+  if (!detail) {
+    return <ReviewDetailNotFoundState returnQuery={returnQuery} />;
+  }
+  const resolvedDetail: ReviewDetail = detail;
+  return <ReviewDetailPage detail={resolvedDetail} returnQuery={returnQuery} />;
 }
 
 function FixtureSelector({
@@ -284,6 +309,7 @@ function ReviewStateCard({
 
   return (
     <ReviewList
+      detailScenario={state.scenario}
       response={fixtureListResponse(state, {
         page: Number(value('page')) || 1,
         query: value('query'),

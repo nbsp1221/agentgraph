@@ -1,9 +1,11 @@
+import { reviewDetailSchema } from '@agentgraph/contracts';
 import { describe, expect, it } from 'vitest';
 import en from '../../messages/en.json';
 import ko from '../../messages/ko.json';
 import { healthDescriptionKey } from './health';
 import {
   createFixture,
+  fixtureDetailResponse,
   fixtureListResponse,
   fixtureScenarios,
   isFixtureControlEnabled,
@@ -36,6 +38,15 @@ describe('fixture harness', () => {
     }
   });
 
+  it('localizes every detail lifecycle notice in both supported languages', () => {
+    const statuses = ['running', 'failed', 'superseded', 'queued', 'cancelled', 'unknown'] as const;
+    for (const status of statuses) {
+      const key = `${status}Description` as const;
+      expect(en.reviewDetail[key]).toBeTruthy();
+      expect(ko.reviewDetail[key]).toBeTruthy();
+    }
+  });
+
   it('paginates fixture responses and keeps named active reviews visible', () => {
     const pageTwo = fixtureListResponse(createFixture('pagination'), { page: 2 });
     expect(pageTwo.page).toBe(2);
@@ -52,5 +63,44 @@ describe('fixture harness', () => {
     const needsEvaluation = fixtureListResponse(state, { evaluation: 'needs_evaluation' });
     expect(needsEvaluation.items.every((item) => item.status === 'completed')).toBe(true);
     expect(needsEvaluation.items.every((item) => item.review_evaluation === null)).toBe(true);
+  });
+
+  it('creates read-only detail contracts for named lifecycle scenarios', () => {
+    const scenarios = [
+      ['running', 240, 'running', false],
+      ['failed', 237, 'failed', false],
+      ['superseded', 239, 'superseded', false],
+      ['completed-zero-findings', 235, 'completed', true],
+      ['missing-artifact', 234, 'completed', false],
+      ['incomplete-coverage', 234, 'completed', true],
+      ['queued', 232, 'queued', false],
+      ['cancelled', 231, 'cancelled', false],
+      ['unknown', 230, 'unknown', false],
+    ] as const;
+    for (const [scenario, id, status, artifactAvailable] of scenarios) {
+      const detail = fixtureDetailResponse(createFixture(scenario), id);
+      expect(detail).toBeDefined();
+      const parsed = reviewDetailSchema.parse(detail);
+      expect(parsed.status).toBe(status);
+      expect(parsed.artifact.available).toBe(artifactAvailable);
+      if (!artifactAvailable) {
+        expect(parsed.artifact.findings).toEqual([]);
+        expect(parsed.artifact.coverage).toBeNull();
+        expect(parsed.artifact.tests_run).toEqual([]);
+      }
+    }
+  });
+
+  it('keeps finding lifecycle states in the stored detail contract', () => {
+    expect(
+      fixtureDetailResponse(createFixture('finding-open'), 229)?.artifact.findings[0]?.state,
+    ).toBe('open');
+    expect(
+      fixtureDetailResponse(createFixture('finding-fixed'), 229)?.artifact.findings[0]?.state,
+    ).toBe('fixed');
+    expect(
+      fixtureDetailResponse(createFixture('finding-still-present'), 229)?.artifact.findings[0]
+        ?.state,
+    ).toBe('still_present');
   });
 });

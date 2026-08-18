@@ -49,20 +49,26 @@ import { useSearchParams } from 'next/navigation';
 import { useQueryStates } from 'nuqs';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from '../../i18n/navigation';
+import { reviewReturnQuery } from './review-detail-navigation';
 import { columnClass, createReviewColumns } from './review-list-columns';
 import { reviewQueryParsers } from './review-query-parsers';
 
-type ReviewListProps = { response: ReviewListResponse; error?: boolean };
+type ReviewListProps = {
+  response: ReviewListResponse;
+  error?: boolean;
+  detailScenario?: string;
+};
 
 const features = tableFeatures({});
 
-export function ReviewList({ response, error = false }: ReviewListProps) {
+export function ReviewList({ response, error = false, detailScenario }: ReviewListProps) {
   const t = useTranslations('reviews');
   const common = useTranslations('common');
   const router = useRouter();
   const pathname = usePathname();
   const locale = useLocale();
   const searchParams = useSearchParams();
+  const returnQuery = reviewReturnQuery(searchParams);
   const [{ query, status, evaluation }, setQuery] = useQueryStates(
     {
       ...reviewQueryParsers,
@@ -88,7 +94,10 @@ export function ReviewList({ response, error = false }: ReviewListProps) {
     void setQuery({ [key]: value === 'all' ? null : value, page: null });
   }
 
-  const columns = useMemo(() => createReviewColumns(t, common), [common, t]);
+  const columns = useMemo(
+    () => createReviewColumns(t, common, detailScenario, returnQuery),
+    [common, detailScenario, returnQuery, t],
+  );
   const table = useTable({ features, data: response.items, columns });
 
   if (error) {
@@ -188,7 +197,9 @@ export function ReviewList({ response, error = false }: ReviewListProps) {
               <TableRow
                 key={row.id}
                 className="cursor-pointer"
-                onClick={() => router.push(`/reviews/${row.original.id}`)}
+                onClick={() =>
+                  router.push(`/reviews/${row.original.id}${returnQuery ? `?${returnQuery}` : ''}`)
+                }
               >
                 {row.getAllCells().map((cell) => (
                   <TableCell key={cell.id} className={columnClass(cell.column.id)}>
