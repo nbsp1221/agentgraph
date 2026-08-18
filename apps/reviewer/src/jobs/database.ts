@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { createHash } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import type { ReviewResult } from '../review/result.js';
 import { openDatabase } from '../storage/connection.js';
@@ -107,6 +108,43 @@ export interface LatestJobStatus {
   headSha: string;
   id: number;
   state: string;
+}
+
+export interface ReviewQuery {
+  page: number;
+  query?: string;
+  statuses?: readonly string[];
+  evaluation?: 'evaluated' | 'needs_evaluation';
+}
+
+export interface ReviewQueryRow {
+  id: number;
+  repository: string;
+  pullRequestNumber: number;
+  pullRequestTitle?: string;
+  headSha: string;
+  baseSha?: string;
+  state: string;
+  model?: string;
+  reasoning?: string;
+  findingsCount: number;
+  highestSeverity: string | undefined;
+  reviewEvaluationId?: number;
+  reviewVerdict?: ReviewVerdict;
+  evaluatedFindings: number;
+  totalFindings: number;
+  createdAt: string;
+  completedAt?: string;
+  durationMs: number | undefined;
+}
+
+export interface ReviewDetailRow extends ReviewJob {
+  createdAt: string;
+  reviewStartedAt?: string;
+  reviewCompletedAt?: string;
+  publicationStartedAt?: string;
+  publishedAt?: string;
+  supersededByJobId?: number;
 }
 
 export class JobDatabase {
@@ -294,6 +332,72 @@ export class JobDatabase {
       count: number;
     };
     return row.count;
+  }
+
+  listReviewJobs(input: ReviewQuery): { items: ReviewQueryRow[]; totalItems: number } {
+    const { items: rows, totalItems } = this.#reviewRepository.listReviewJobs(input);
+    return {
+      totalItems,
+      items: rows.map((row) => {
+        const findingsCount = Number(row.findings_count ?? 0);
+        return {
+          id: Number(row.id),
+          repository: String(row.repository),
+          pullRequestNumber: Number(row.pull_request_number),
+          ...(typeof row.pull_request_title === 'string'
+            ? { pullRequestTitle: row.pull_request_title }
+            : {}),
+          headSha: String(row.head_sha),
+          ...(typeof row.base_sha === 'string' ? { baseSha: row.base_sha } : {}),
+          state: String(row.state),
+          ...(typeof row.model === 'string' ? { model: row.model } : {}),
+          ...(typeof row.reasoning === 'string' ? { reasoning: row.reasoning } : {}),
+          findingsCount,
+          evaluatedFindings: Number(row.evaluated_findings ?? 0),
+          totalFindings: findingsCount,
+          ...(typeof row.review_evaluation_id === 'number'
+            ? { reviewEvaluationId: Number(row.review_evaluation_id) }
+            : {}),
+          ...reviewVerdictFromRow(row.review_verdict),
+          createdAt: String(row.created_at),
+          ...(typeof row.review_completed_at === 'string'
+            ? { completedAt: row.review_completed_at }
+            : {}),
+          durationMs: durationMilliseconds(row.review_started_at, row.review_completed_at),
+          highestSeverity: highestSeverity(
+            row.result_json,
+            row.availability,
+            row.content_hash,
+            row.artifact_hash,
+          ),
+        };
+      }),
+    };
+  }
+
+  getReviewJob(id: number): ReviewDetailRow | undefined {
+    const row = this.#reviewRepository.getReviewJobRow(id);
+    if (row === undefined) {
+      return undefined;
+    }
+    const job = mapReviewJob(row);
+    return {
+      ...job,
+      createdAt: String(row.created_at),
+      ...(typeof row.review_started_at === 'string'
+        ? { reviewStartedAt: row.review_started_at }
+        : {}),
+      ...(typeof row.review_completed_at === 'string'
+        ? { reviewCompletedAt: row.review_completed_at }
+        : {}),
+      ...(typeof row.publication_started_at === 'string'
+        ? { publicationStartedAt: row.publication_started_at }
+        : {}),
+      ...(typeof row.published_at === 'string' ? { publishedAt: row.published_at } : {}),
+      ...(row.superseded_by_job_id === null || row.superseded_by_job_id === undefined
+        ? {}
+        : { supersededByJobId: Number(row.superseded_by_job_id) }),
+    };
   }
 
   getActiveJobIds(): Set<number> {
@@ -730,4 +834,62 @@ function mapPullRequestState(row: Record<string, unknown>): PullRequestState {
         ? undefined
         : Number(row.status_comment_id),
   };
+}
+
+function durationMilliseconds(start: unknown, end: unknown): number | undefined {
+  if (typeof start !== 'string' || typeof end !== 'string') {
+    return undefined;
+  }
+  const value = Date.parse(end) - Date.parse(start);
+  return Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+
+function highestSeverity(
+  resultJson: unknown,
+  availability: unknown,
+  contentHash: unknown,
+  artifactHash: unknown,
+): string | undefined {
+  if (
+    availability !== 'AVAILABLE' ||
+    typeof resultJson !== 'string' ||
+    !artifactIntegrity(resultJson, contentHash, artifactHash)
+  ) {
+    return undefined;
+  }
+  try {
+    const findings =
+      (JSON.parse(resultJson) as { findings?: Array<{ severity?: string }> }).findings ?? [];
+    for (const severity of ['critical', 'high', 'medium', 'low']) {
+      if (findings.some((finding) => finding.severity === severity)) {
+        return severity;
+      }
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+function artifactIntegrity(
+  resultJson: string,
+  contentHash: unknown,
+  artifactHash: unknown,
+): boolean {
+  if (typeof contentHash !== 'string' || typeof artifactHash !== 'string') {
+    return false;
+  }
+  const hash = createHash('sha256').update(resultJson, 'utf8').digest('hex');
+  return hash === contentHash && hash === artifactHash;
+}
+
+function reviewVerdictFromRow(
+  value: unknown,
+): { reviewVerdict: ReviewVerdict } | Record<string, never> {
+  return value === 'useful' ||
+    value === 'mixed' ||
+    value === 'not_useful' ||
+    value === 'unable_to_assess'
+    ? { reviewVerdict: value }
+    : {};
 }

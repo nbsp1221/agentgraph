@@ -6,3 +6,6 @@ injectWorkspacePackages: true
 
 allowBuilds:
   esbuild: true
+
+minimumReleaseAgeExclude:
+  - hono@4.13.3

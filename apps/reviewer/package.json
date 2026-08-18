@@ -21,9 +21,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@agentgraph/contracts": "workspace:*",
+    "@hono/node-server": "2.1.1",
+    "@hono/zod-validator": "0.9.0",
     "@octokit/app": "16.1.4",
     "cac": "7.0.0",
     "execa": "10.0.1",
+    "hono": "4.13.3",
     "yaml": "^2.9.0",
     "zod": "4.4.3"
   },

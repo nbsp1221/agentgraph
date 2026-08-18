@@ -19,6 +19,12 @@ export interface PullRequestDetails {
   title: string;
 }
 
+export interface FindingContext {
+  content: string;
+  startLine: number;
+  endLine: number;
+}
+
 export type CheckConclusion = 'cancelled' | 'failure' | 'neutral' | 'success' | 'timed_out';
 
 export interface CheckOutput {
@@ -85,6 +91,39 @@ export class GitHubAppClient {
         throw new Error(`repository policy path is not a file: ${input.path}`);
       }
       return Buffer.from(response.data.content, 'base64').toString('utf8');
+    } catch (error) {
+      if (githubErrorStatus(error) === 404) {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  /** Fetch only a bounded patch fragment from an immutable base/head comparison. */
+  async getFindingContext(input: {
+    installationId: number;
+    repository: string;
+    baseSha: string;
+    headSha: string;
+    file: string;
+    line: number;
+  }): Promise<FindingContext | undefined> {
+    const [owner, repository] = splitRepository(input.repository);
+    const octokit = await this.#app.getInstallationOctokit(input.installationId);
+    try {
+      const response = await this.#withRetry(() =>
+        octokit.request('GET /repos/{owner}/{repo}/compare/{basehead}', {
+          owner,
+          repo: repository,
+          basehead: `${input.baseSha}...${input.headSha}`,
+        }),
+      );
+      const file = response.data.files?.find((candidate) => candidate.filename === input.file);
+      if (file === undefined || typeof file.patch !== 'string') {
+        return undefined;
+      }
+      const context = contextFromPatch(file.patch, input.line);
+      return context;
     } catch (error) {
       if (githubErrorStatus(error) === 404) {
         return undefined;
@@ -576,6 +615,58 @@ export class GitHubAppClient {
       }
     }
   }
+}
+
+function contextFromPatch(patch: string, targetLine: number): FindingContext | undefined {
+  const lines = patch.split('\n');
+  let newLine = 0;
+  let hunk: Array<{ line: number; text: string }> = [];
+  let targetHunk: Array<{ line: number; text: string }> | undefined;
+  for (const line of lines) {
+    const header = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+    if (header !== null) {
+      newLine = Number(header[1]);
+      hunk = [];
+      continue;
+    }
+    if (newLine === 0) {
+      continue;
+    }
+    if (line.startsWith('-') && !line.startsWith('---')) {
+      hunk.push({ line: newLine, text: line });
+      continue;
+    }
+    if (line.startsWith('+') && !line.startsWith('+++')) {
+      hunk.push({ line: newLine, text: line });
+      if (newLine === targetLine) {
+        targetHunk = hunk;
+      }
+      newLine += 1;
+      continue;
+    }
+    hunk.push({ line: newLine, text: line });
+    if (newLine === targetLine) {
+      targetHunk = hunk;
+    }
+    newLine += 1;
+  }
+  if (targetHunk === undefined) {
+    return undefined;
+  }
+  const startLine = Math.max(1, targetLine - 20);
+  const endLine = targetLine + 20;
+  const selected = targetHunk.filter((item) => item.line >= startLine && item.line <= endLine);
+  if (selected.length === 0) {
+    return undefined;
+  }
+  return {
+    content: selected
+      .map((item) => `${item.line}: ${item.text}`)
+      .join('\n')
+      .slice(0, 16_384),
+    startLine: selected[0]?.line ?? targetLine,
+    endLine: selected.at(-1)?.line ?? targetLine,
+  };
 }
 
 export function repositoryReadTokenRequest(installationId: number, repositoryId: number) {

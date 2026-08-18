@@ -35,6 +35,13 @@ export interface ReviewFinding {
   title: string;
 }
 
+export interface ReviewListQuery {
+  page: number;
+  query?: string;
+  statuses?: readonly string[];
+  evaluation?: 'evaluated' | 'needs_evaluation';
+}
+
 export class ReviewRepository {
   constructor(
     private readonly database: DatabaseSync,
@@ -181,6 +188,54 @@ export class ReviewRepository {
         );
       }
     });
+  }
+
+  listReviewJobs(input: ReviewListQuery): {
+    items: Array<Record<string, unknown>>;
+    totalItems: number;
+  } {
+    const where: string[] = [];
+    const params: Array<string | number> = [];
+    if (input.query !== undefined && input.query.trim() !== '') {
+      const query = `%${input.query.trim().toLowerCase()}%`;
+      where.push(
+        "(lower(repository) LIKE ? OR lower(COALESCE(pull_request_title, '')) LIKE ? OR CAST(pull_request_number AS TEXT) LIKE ?)",
+      );
+      params.push(query, query, query);
+    }
+    if (input.statuses !== undefined && input.statuses.length > 0) {
+      where.push(`state IN (${input.statuses.map(() => '?').join(',')})`);
+      params.push(...input.statuses);
+    }
+    if (input.evaluation === 'evaluated') {
+      where.push(
+        "EXISTS (SELECT 1 FROM evaluation_revisions e WHERE e.job_id=j.id AND e.target_type='review' AND e.action='set' AND e.id=(SELECT MAX(id) FROM evaluation_revisions WHERE job_id=j.id AND target_type='review'))",
+      );
+    } else if (input.evaluation === 'needs_evaluation') {
+      where.push(
+        "j.state='DONE' AND EXISTS (SELECT 1 FROM review_artifacts available_artifact WHERE available_artifact.job_id=j.id AND available_artifact.availability='AVAILABLE' AND json_valid(available_artifact.result_json) AND sha256(available_artifact.result_json)=available_artifact.content_hash AND sha256(available_artifact.result_json)=j.artifact_hash) AND NOT EXISTS (SELECT 1 FROM evaluation_revisions e WHERE e.job_id=j.id AND e.target_type='review' AND e.action='set' AND e.id=(SELECT MAX(id) FROM evaluation_revisions WHERE job_id=j.id AND target_type='review'))",
+      );
+    }
+    const predicate = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+    const count = this.database
+      .prepare(`SELECT COUNT(*) AS count FROM review_jobs j ${predicate}`)
+      .get(...params) as { count: number };
+    const rows = this.database
+      .prepare(`
+      SELECT j.*, a.availability, a.result_json,
+        (SELECT COUNT(*) FROM json_each(CASE WHEN a.availability='AVAILABLE' AND json_valid(a.result_json) AND sha256(a.result_json)=a.content_hash AND sha256(a.result_json)=j.artifact_hash THEN json_extract(a.result_json,'$.findings') ELSE '[]' END)) AS findings_count,
+        (SELECT COUNT(*) FROM evaluation_revisions e WHERE e.job_id=j.id AND e.target_type='finding' AND e.action='set' AND e.id=(SELECT MAX(id) FROM evaluation_revisions WHERE job_id=j.id AND target_type='finding' AND finding_fingerprint=e.finding_fingerprint)) AS evaluated_findings,
+        (SELECT MAX(id) FROM evaluation_revisions e WHERE e.job_id=j.id AND e.target_type='review') AS review_evaluation_id,
+        (SELECT verdict FROM evaluation_revisions e WHERE e.id=(SELECT MAX(id) FROM evaluation_revisions WHERE job_id=j.id AND target_type='review')) AS review_verdict
+      FROM review_jobs j LEFT JOIN review_artifacts a ON a.job_id=j.id ${predicate}
+      ORDER BY j.created_at DESC, j.id DESC LIMIT 20 OFFSET ?
+    `)
+      .all(...params, (Math.max(1, input.page) - 1) * 20) as Array<Record<string, unknown>>;
+    return { totalItems: Number(count.count), items: rows };
+  }
+
+  getReviewJobRow(id: number): Record<string, unknown> | undefined {
+    return this.database.prepare('SELECT * FROM review_jobs WHERE id=?').get(id);
   }
 
   getReviewFindings(repository: string, pullRequestNumber: number): ReviewFinding[] {

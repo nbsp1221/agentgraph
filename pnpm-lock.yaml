@@ -54,6 +54,15 @@ importers:
 
   apps/reviewer:
     dependencies:
+      '@agentgraph/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@hono/node-server':
+        specifier: 2.1.1
+        version: 2.1.1(hono@4.13.3)
+      '@hono/zod-validator':
+        specifier: 0.9.0
+        version: 0.9.0(hono@4.13.3)(zod@4.4.3)
       '@octokit/app':
         specifier: 16.1.4
         version: 16.1.4
@@ -63,6 +72,9 @@ importers:
       execa:
         specifier: 10.0.1
         version: 10.0.1
+      hono:
+        specifier: 4.13.3
+        version: 4.13.3
       yaml:
         specifier: ^2.9.0
         version: 2.9.0
@@ -75,6 +87,10 @@ importers:
         version: link:../../packages/typescript-config
 
   packages/contracts:
+    dependencies:
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
     devDependencies:
       '@agentgraph/typescript-config':
         specifier: workspace:*
@@ -400,6 +416,18 @@ packages:
   '@eslint/plugin-kit@0.7.2':
     resolution: {integrity: sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+
+  '@hono/node-server@2.1.1':
+    resolution: {integrity: sha512-ELuehkj5VCBdgEw9zs+ivkKwyzzUCSQuE96YmiPvn1ECBoZCczbFXJLeEGMTYjphP6gydh4pHMqEYPVMYUVgQg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      hono: ^4
+
+  '@hono/zod-validator@0.9.0':
+    resolution: {integrity: sha512-n0ZSXmCiHVIp4Y5wlOOyZCeTd/rsawA/qW1cipB8QOYKZ9N8Tk0nZUZCXho9cu374AN4JpDNKioNKBJ/W+LBug==}
+    peerDependencies:
+      hono: '>=4.11.2'
+      zod: ^3.25.0 || ^4.0.0
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -1562,6 +1590,10 @@ packages:
   hermes-parser@0.25.1:
     resolution: {integrity: sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA==}
 
+  hono@4.13.3:
+    resolution: {integrity: sha512-r8AO2mYHoLxSHkgafNeC/BXyb2vWRxD3jem4Ts+ptav8oTG5FIRifAjuJEmZI4bSvvc2ns0GxmIYiZnHqN3mMw==}
+    engines: {node: '>=16.9.0'}
+
   hookable@6.1.1:
     resolution: {integrity: sha512-U9LYDy1CwhMCnprUfeAZWZGByVbhd54hwepegYTK7Pi5NvqEj63ifz5z+xukznehT7i6NIZRu89Ay1AZmRsLEQ==}
 
@@ -2473,6 +2505,15 @@ snapshots:
     dependencies:
       '@eslint/core': 1.2.1
       levn: 0.4.1
+
+  '@hono/node-server@2.1.1(hono@4.13.3)':
+    dependencies:
+      hono: 4.13.3
+
+  '@hono/zod-validator@0.9.0(hono@4.13.3)(zod@4.4.3)':
+    dependencies:
+      hono: 4.13.3
+      zod: 4.4.3
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -3541,6 +3582,8 @@ snapshots:
   hermes-parser@0.25.1:
     dependencies:
       hermes-estree: 0.25.1
+
+  hono@4.13.3: {}
 
   hookable@6.1.1: {}
 

@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { type CAC, cac } from 'cac';
 import { loadServerConfig } from './app/config.js';
 import { createAgentGraphServer } from './app/server.js';
+import { GitHubAppClient } from './github/client.js';
 import { CredentialStore } from './github/credentials.js';
 import { ManualCommandHandler } from './jobs/command-handler.js';
 import { JobDatabase } from './jobs/database.js';
@@ -89,6 +90,7 @@ function serve(): void {
     onJobQueued: (job) => worker.cancelSuperseded(job),
     onManualCommand: (command) => commandHandler.handle(command),
     onPullRequestCancelled: (cancellation) => worker.cancelPullRequest(cancellation),
+    getFindingContext: (input) => new GitHubAppClient(credentials.read()).getFindingContext(input),
   });
 
   let shuttingDown = false;

@@ -1,0 +1,276 @@
+import type { AddressInfo } from 'node:net';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import {
+  contextResponseSchema,
+  evaluationWriteResponseSchema,
+  evaluationsResponseSchema,
+  reviewDetailSchema,
+  reviewListResponseSchema,
+  statusResponseSchema,
+} from '@agentgraph/contracts';
+import { afterEach, describe, expect, it } from 'vitest';
+import { createAgentGraphServer } from '../../../src/app/server.js';
+import { CredentialStore } from '../../../src/github/credentials.js';
+import { JobDatabase } from '../../../src/jobs/database.js';
+import { findingFingerprint } from '../../../src/review/result.js';
+
+const config = {
+  allowedOwnerId: 1,
+  credentialsDirectory: '/unused',
+  databasePath: ':memory:',
+  host: '127.0.0.1',
+  jobsDirectory: '/unused/jobs',
+  githubAppName: 'test',
+  model: 'model',
+  port: 6571,
+  publicBaseUrl: 'https://example.test',
+  reasoningEffort: 'low' as const,
+  resourcesDirectory: '/unused',
+};
+const result = {
+  coverage: {
+    changed_files: ['src/a.ts'],
+    complete: true,
+    omitted_files: [],
+    reviewed_files: ['src/a.ts'],
+  },
+  finding_updates: [],
+  findings: [
+    {
+      confidence: 'high' as const,
+      evidence: 'stored context',
+      explanation: 'bad path',
+      file: 'src/a.ts',
+      line: 12,
+      severity: 'high' as const,
+      suggested_action: 'fix it',
+      title: 'Bug',
+    },
+  ],
+  limitations: [],
+  summary: 'one finding',
+  tests_run: [],
+};
+const cleanup: Array<() => void> = [];
+
+afterEach(() => {
+  for (const close of cleanup.splice(0)) {
+    close();
+  }
+});
+
+async function fixture() {
+  const directory = mkdtempSync(join(tmpdir(), 'agentgraph-api-'));
+  const credentials = new CredentialStore(directory);
+  credentials.write({
+    appId: 1,
+    clientId: 'client',
+    name: 'test',
+    privateKey: 'private',
+    slug: 'test',
+    webhookSecret: 'long-enough-secret',
+  });
+  const database = new JobDatabase(':memory:');
+  database.enqueuePullRequest({
+    action: 'opened',
+    deliveryId: 'delivery-1',
+    headSha: 'b'.repeat(40),
+    baseSha: 'a'.repeat(40),
+    installationId: 42,
+    policyVersion: 'v1',
+    pullRequestNumber: 1,
+    pullRequestTitle: 'A title',
+    repository: 'owner/repo',
+  });
+  const job = database.claimNextJob();
+  if (job === undefined) {
+    throw new Error('fixture job was not claimed');
+  }
+  database.updateJob({
+    id: job.id,
+    state: 'DONE',
+    expectedStates: ['CHECKING_OUT'],
+    ...(job.attempt === undefined ? {} : { attempt: job.attempt }),
+  });
+  database.recordReviewArtifact(job.id, result);
+  const server = createAgentGraphServer(config, database, credentials);
+  await new Promise<void>((resolve) => {
+    server.listen(0, '127.0.0.1', () => resolve());
+  });
+  const address = server.address() as AddressInfo;
+  cleanup.push(
+    () => server.close(),
+    () => database.close(),
+    () => rmSync(directory, { recursive: true, force: true }),
+  );
+  return { database, job, url: `http://127.0.0.1:${address.port}` };
+}
+
+describe('versioned reviewer API contracts', () => {
+  it('reports unknown dependencies until they have been observed', async () => {
+    const { url } = await fixture();
+    const response = await fetch(`${url}/api/v1/status`);
+    expect(response.status).toBe(200);
+    const parsed = statusResponseSchema.parse(await response.json());
+    expect(parsed.overall).toBe('unknown');
+    expect(parsed.worker.status).toBe('unknown');
+    expect(parsed.sandbox.status).toBe('unknown');
+  });
+
+  it('lists stable page-20 results and validates detail/evaluation/context contracts', async () => {
+    const { url, database, job } = await fixture();
+    for (let number = 2; number <= 22; number += 1) {
+      database.enqueuePullRequest({
+        action: 'opened',
+        deliveryId: `delivery-${number}`,
+        headSha: number.toString().padStart(40, '0'),
+        installationId: 42,
+        policyVersion: 'v1',
+        pullRequestNumber: number,
+        repository: 'owner/repo',
+      });
+    }
+    const list = reviewListResponseSchema.parse(
+      await (await fetch(`${url}/api/v1/reviews?page=1`)).json(),
+    );
+    expect(list.page_size).toBe(20);
+    expect(list.items).toHaveLength(20);
+    expect(list.items[0]?.id).toBeGreaterThan(list.items[1]?.id ?? 0);
+    expect((await fetch(`${url}/api/v1/reviews?status=completed`)).status).toBe(200);
+    expect((await fetch(`${url}/api/v1/reviews?page=0`)).status).toBe(422);
+    database.enqueuePullRequest({
+      action: 'opened',
+      deliveryId: 'timed-out-delivery',
+      headSha: 'c'.repeat(40),
+      installationId: 42,
+      policyVersion: 'v1',
+      pullRequestNumber: 99,
+      repository: 'owner/repo',
+    });
+    const timedOut = database.claimNextJob();
+    if (timedOut === undefined) {
+      throw new Error('timed out fixture was not claimed');
+    }
+    database.updateJob({ id: timedOut.id, state: 'TIMED_OUT', expectedStates: ['CHECKING_OUT'] });
+    const failedList = reviewListResponseSchema.parse(
+      await (await fetch(`${url}/api/v1/reviews?status=failed`)).json(),
+    );
+    expect(failedList.items.some((item) => item.id === timedOut.id)).toBe(true);
+    const detail = reviewDetailSchema.parse(
+      await (await fetch(`${url}/api/v1/reviews/${job.id}`)).json(),
+    );
+    expect(detail.artifact.available).toBe(true);
+    const firstFinding = result.findings[0];
+    if (firstFinding === undefined) {
+      throw new Error('fixture finding is missing');
+    }
+    const fingerprint = findingFingerprint(firstFinding);
+    const context = contextResponseSchema.parse(
+      await (await fetch(`${url}/api/v1/reviews/${job.id}/findings/${fingerprint}/context`)).json(),
+    );
+    expect(context.source).toBe('stored_evidence');
+    const saved = evaluationWriteResponseSchema.parse(
+      await (
+        await fetch(`${url}/api/v1/reviews/${job.id}/evaluation`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            verdict: 'useful',
+            rationale: 'looks good',
+            expected_previous_id: null,
+          }),
+        })
+      ).json(),
+    );
+    expect(saved.current?.verdict).toBe('useful');
+    expect(
+      evaluationsResponseSchema.parse(
+        await (await fetch(`${url}/api/v1/reviews/${job.id}/evaluations`)).json(),
+      ).review.current?.verdict,
+    ).toBe('useful');
+    expect((await fetch(`${url}/api/v1/reviews/999999`)).status).toBe(404);
+  });
+
+  it('returns contract errors for malformed JSON and invalid withdraw revisions', async () => {
+    const { url, job } = await fixture();
+    const malformed = await fetch(`${url}/api/v1/reviews/${job.id}/evaluation`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: '{',
+    });
+    expect(malformed.status).toBe(422);
+    await expect(malformed.json()).resolves.toMatchObject({ code: 'INVALID_REQUEST' });
+    const invalidWithdraw = await fetch(`${url}/api/v1/reviews/${job.id}/evaluation`, {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ expected_previous_id: 'bad' }),
+    });
+    expect(invalidWithdraw.status).toBe(422);
+    const malformedWithdraw = await fetch(`${url}/api/v1/reviews/${job.id}/evaluation`, {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: '{',
+    });
+    expect(malformedWithdraw.status).toBe(422);
+    const set = evaluationWriteResponseSchema.parse(
+      await (
+        await fetch(`${url}/api/v1/reviews/${job.id}/evaluation`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ verdict: 'mixed', expected_previous_id: null }),
+        })
+      ).json(),
+    );
+    if (set.current === null) {
+      throw new Error('evaluation was not created');
+    }
+    const withdrawn = await fetch(`${url}/api/v1/reviews/${job.id}/evaluation`, {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ expected_previous_id: set.current?.id }),
+    });
+    expect(withdrawn.status).toBe(200);
+    const evaluations = evaluationsResponseSchema.parse(
+      await (await fetch(`${url}/api/v1/reviews/${job.id}/evaluations`)).json(),
+    );
+    expect(evaluations.review.current).toBeNull();
+    expect(evaluations.review.history[0]?.action).toBe('withdraw');
+  });
+
+  it('excludes a valid-but-tampered artifact from findings and needs-evaluation', () => {
+    const root = mkdtempSync(join(tmpdir(), 'agentgraph-api-tamper-'));
+    const path = join(root, 'state.sqlite');
+    const database = new JobDatabase(path, { dataRoot: root });
+    database.enqueuePullRequest({
+      action: 'opened',
+      deliveryId: 'tamper-delivery',
+      headSha: 'd'.repeat(40),
+      baseSha: 'e'.repeat(40),
+      installationId: 42,
+      policyVersion: 'v1',
+      pullRequestNumber: 3,
+      repository: 'owner/repo',
+    });
+    const job = database.claimNextJob();
+    if (job === undefined) {
+      throw new Error('tamper fixture was not claimed');
+    }
+    database.updateJob({ id: job.id, state: 'DONE' });
+    database.recordReviewArtifact(job.id, result);
+    database.close();
+    const tamper = new DatabaseSync(path);
+    tamper
+      .prepare('UPDATE review_artifacts SET result_json=? WHERE job_id=?')
+      .run(JSON.stringify({ ...result, summary: 'tampered but valid JSON' }), job.id);
+    tamper.close();
+    const reopened = new JobDatabase(path, { dataRoot: root });
+    const list = reopened.listReviewJobs({ page: 1, evaluation: 'needs_evaluation' });
+    expect(list.totalItems).toBe(0);
+    expect(list.items[0]?.findingsCount ?? 0).toBe(0);
+    reopened.close();
+    rmSync(root, { recursive: true, force: true });
+  });
+});
