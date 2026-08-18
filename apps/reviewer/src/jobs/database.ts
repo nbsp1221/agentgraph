@@ -1,7 +1,22 @@
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
-import { type ReviewResult, findingFingerprint } from '../review/result.js';
+import type { DatabaseSync } from 'node:sqlite';
+import { dirname, resolve } from 'node:path';
+import type { ReviewResult } from '../review/result.js';
+import { openDatabase } from '../storage/connection.js';
+import {
+  EvaluationRepository,
+  type EvaluationRevision,
+  type EvaluationTarget,
+  type FindingVerdict,
+  type ReviewVerdict,
+} from '../storage/evaluation-repository.js';
+import { redactFailureExcerpt } from '../storage/failure.js';
+import { runMigrations, schemaVersion } from '../storage/migrations/index.js';
+import {
+  type PreviousReview,
+  type ReviewArtifact,
+  type ReviewFinding,
+  ReviewRepository,
+} from '../storage/review-repository.js';
 import type { ManualCommand } from './command.js';
 
 export interface PullRequestJobInput {
@@ -12,6 +27,14 @@ export interface PullRequestJobInput {
   policyVersion: string;
   pullRequestNumber: number;
   repository: string;
+  baseSha?: string;
+  pullRequestTitle?: string;
+  model?: string;
+  reasoning?: string;
+  promptVersion?: string;
+  promptHash?: string;
+  schemaVersion?: string;
+  schemaHash?: string;
 }
 
 export interface EnqueueResult {
@@ -46,7 +69,26 @@ export interface ReviewJob extends PullRequestJobInput {
   publishedReviewId: number | undefined;
   resultPath: string | undefined;
   state: string;
+  baseSha?: string;
+  pullRequestTitle?: string;
+  model?: string;
+  reasoning?: string;
+  promptVersion?: string;
+  promptHash?: string;
+  schemaVersion?: string;
+  schemaHash?: string;
+  errorCode?: string;
+  errorExcerpt?: string;
+  artifactHash?: string;
 }
+
+export type {
+  EvaluationRevision,
+  EvaluationTarget,
+  FindingVerdict,
+  ReviewVerdict,
+} from '../storage/evaluation-repository.js';
+export { EvaluationConflictError } from '../storage/evaluation-repository.js';
 
 export interface PullRequestState {
   currentHeadSha: string;
@@ -54,21 +96,11 @@ export interface PullRequestState {
   statusCommentId: number | undefined;
 }
 
-export interface PreviousReview {
-  headSha: string;
-  resultPaths: string[];
-}
-
-export interface ReviewFinding {
-  evidence: string;
-  file: string;
-  fingerprint: string;
-  firstSeenJobId: number;
-  lastSeenJobId: number;
-  line: number;
-  state: 'FIXED' | 'OPEN' | 'STILL_PRESENT';
-  title: string;
-}
+export type {
+  PreviousReview,
+  ReviewArtifact,
+  ReviewFinding,
+} from '../storage/review-repository.js';
 
 export interface LatestJobStatus {
   error: string | undefined;
@@ -79,84 +111,20 @@ export interface LatestJobStatus {
 
 export class JobDatabase {
   readonly #database: DatabaseSync;
+  readonly #evaluationRepository: EvaluationRepository;
+  readonly #reviewRepository: ReviewRepository;
 
-  constructor(path: string) {
-    if (path !== ':memory:') {
-      mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
-    }
-
-    this.#database = new DatabaseSync(path);
-    this.#database.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
-    this.#database.exec(`
-      CREATE TABLE IF NOT EXISTS webhook_deliveries (
-        delivery_id TEXT PRIMARY KEY,
-        received_at TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS review_jobs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        repository TEXT NOT NULL,
-        pull_request_number INTEGER NOT NULL,
-        head_sha TEXT NOT NULL,
-        policy_version TEXT NOT NULL,
-        installation_id INTEGER NOT NULL,
-        action TEXT NOT NULL,
-        delivery_id TEXT NOT NULL REFERENCES webhook_deliveries(delivery_id),
-        state TEXT NOT NULL DEFAULT 'QUEUED',
-        attempt INTEGER NOT NULL DEFAULT 0,
-        error TEXT,
-        check_run_id INTEGER,
-        result_path TEXT,
-        published_review_id INTEGER,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        UNIQUE(repository, pull_request_number, head_sha, policy_version)
-      );
-
-      CREATE TABLE IF NOT EXISTS pull_request_state (
-        repository TEXT NOT NULL,
-        pull_request_number INTEGER NOT NULL,
-        status_comment_id INTEGER,
-        current_job_id INTEGER NOT NULL REFERENCES review_jobs(id),
-        current_head_sha TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        PRIMARY KEY(repository, pull_request_number)
-      );
-
-      CREATE TABLE IF NOT EXISTS review_findings (
-        repository TEXT NOT NULL,
-        pull_request_number INTEGER NOT NULL,
-        fingerprint TEXT NOT NULL,
-        file TEXT NOT NULL,
-        line INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        evidence TEXT NOT NULL,
-        state TEXT NOT NULL CHECK(state IN ('OPEN', 'STILL_PRESENT', 'FIXED')),
-        first_seen_job_id INTEGER NOT NULL REFERENCES review_jobs(id),
-        last_seen_job_id INTEGER NOT NULL REFERENCES review_jobs(id),
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        PRIMARY KEY(repository, pull_request_number, fingerprint)
-      );
-
-      CREATE TABLE IF NOT EXISTS command_audits (
-        delivery_id TEXT PRIMARY KEY,
-        repository TEXT NOT NULL,
-        pull_request_number INTEGER NOT NULL,
-        comment_id INTEGER NOT NULL,
-        actor TEXT NOT NULL,
-        command TEXT NOT NULL,
-        outcome TEXT NOT NULL,
-        detail TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      );
-    `);
-    this.#ensureColumn('review_jobs', 'error', 'TEXT');
-    this.#ensureColumn('review_jobs', 'attempt', 'INTEGER NOT NULL DEFAULT 0');
-    this.#ensureColumn('review_jobs', 'check_run_id', 'INTEGER');
-    this.#ensureColumn('review_jobs', 'result_path', 'TEXT');
-    this.#ensureColumn('review_jobs', 'published_review_id', 'INTEGER');
+  constructor(path: string, options: { dataRoot?: string } = {}) {
+    const dataRoot = resolve(
+      options.dataRoot ?? (path === ':memory:' ? process.cwd() : dirname(path)),
+    );
+    this.#database = openDatabase(path);
+    runMigrations(this.#database);
+    this.#reviewRepository = new ReviewRepository(this.#database, dataRoot);
+    this.#evaluationRepository = new EvaluationRepository(this.#database, (jobId) =>
+      this.getReviewArtifact(jobId),
+    );
+    this.#reviewRepository.backfillArtifacts();
     this.#database.exec(`
       UPDATE review_jobs
       SET state = 'QUEUED', updated_at = datetime('now')
@@ -166,6 +134,10 @@ export class JobDatabase {
 
   close(): void {
     this.#database.close();
+  }
+
+  getSchemaVersion(): number {
+    return schemaVersion(this.#database);
   }
 
   enqueuePullRequest(input: PullRequestJobInput): EnqueueResult {
@@ -184,8 +156,10 @@ export class JobDatabase {
         action,
         delivery_id,
         created_at,
-        updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        updated_at,
+        base_sha, pull_request_title, model, reasoning, prompt_version, prompt_hash,
+        schema_version, schema_hash
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const reviveJob = this.#database.prepare(`
       UPDATE review_jobs
@@ -226,6 +200,14 @@ export class JobDatabase {
         input.deliveryId,
         now,
         now,
+        input.baseSha ?? null,
+        input.pullRequestTitle ?? null,
+        input.model ?? null,
+        input.reasoning ?? null,
+        input.promptVersion ?? null,
+        input.promptHash ?? null,
+        input.schemaVersion ?? null,
+        input.schemaHash ?? null,
       );
       const revivedJob =
         insertedJob.changes === 0
@@ -422,42 +404,7 @@ export class JobDatabase {
   }
 
   findPreviousCompletedReview(job: ReviewJob): PreviousReview | undefined {
-    const row = this.#database
-      .prepare(`
-        SELECT head_sha
-        FROM review_jobs
-        WHERE repository = ?
-          AND pull_request_number = ?
-          AND id < ?
-          AND state = 'DONE'
-          AND result_path IS NOT NULL
-        ORDER BY id DESC
-        LIMIT 1
-      `)
-      .get(job.repository, job.pullRequestNumber, job.id) as Record<string, unknown> | undefined;
-
-    if (row === undefined) {
-      return undefined;
-    }
-    const resultPaths = this.#database
-      .prepare(`
-        SELECT result_path
-        FROM review_jobs
-        WHERE repository = ?
-          AND pull_request_number = ?
-          AND id < ?
-          AND state = 'DONE'
-          AND result_path IS NOT NULL
-        ORDER BY id DESC
-        LIMIT 20
-      `)
-      .all(job.repository, job.pullRequestNumber, job.id) as Array<{
-      result_path: string;
-    }>;
-    return {
-      headSha: String(row.head_sha),
-      resultPaths: resultPaths.map((result) => String(result.result_path)),
-    };
+    return this.#reviewRepository.findPreviousCompletedReview(job);
   }
 
   reconcileFindings(input: {
@@ -465,101 +412,11 @@ export class JobDatabase {
     previousResult: ReviewResult | undefined;
     result: ReviewResult;
   }): void {
-    const now = new Date().toISOString();
-    const upsertFinding = this.#database.prepare(`
-      INSERT INTO review_findings (
-        repository, pull_request_number, fingerprint, file, line, title,
-        evidence, state, first_seen_job_id, last_seen_job_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?)
-      ON CONFLICT(repository, pull_request_number, fingerprint) DO UPDATE SET
-        file = excluded.file,
-        line = excluded.line,
-        title = excluded.title,
-        evidence = excluded.evidence,
-        state = 'OPEN',
-        last_seen_job_id = excluded.last_seen_job_id,
-        updated_at = excluded.updated_at
-    `);
-    const seedFinding = this.#database.prepare(`
-      INSERT OR IGNORE INTO review_findings (
-        repository, pull_request_number, fingerprint, file, line, title,
-        evidence, state, first_seen_job_id, last_seen_job_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?)
-    `);
-    const updateFinding = this.#database.prepare(`
-      UPDATE review_findings
-      SET state = ?, evidence = ?, last_seen_job_id = ?, updated_at = ?
-      WHERE repository = ? AND pull_request_number = ? AND fingerprint = ?
-    `);
-
-    this.#database.exec('BEGIN IMMEDIATE');
-    try {
-      for (const finding of input.previousResult?.findings ?? []) {
-        seedFinding.run(
-          input.job.repository,
-          input.job.pullRequestNumber,
-          findingFingerprint(finding),
-          finding.file,
-          finding.line,
-          finding.title,
-          finding.evidence,
-          input.job.id,
-          input.job.id,
-          now,
-          now,
-        );
-      }
-      for (const finding of input.result.findings) {
-        upsertFinding.run(
-          input.job.repository,
-          input.job.pullRequestNumber,
-          findingFingerprint(finding),
-          finding.file,
-          finding.line,
-          finding.title,
-          finding.evidence,
-          input.job.id,
-          input.job.id,
-          now,
-          now,
-        );
-      }
-      for (const update of input.result.finding_updates ?? []) {
-        updateFinding.run(
-          update.status === 'fixed' ? 'FIXED' : 'STILL_PRESENT',
-          update.evidence,
-          input.job.id,
-          now,
-          input.job.repository,
-          input.job.pullRequestNumber,
-          update.fingerprint,
-        );
-      }
-      this.#database.exec('COMMIT');
-    } catch (error) {
-      this.#database.exec('ROLLBACK');
-      throw error;
-    }
+    this.#reviewRepository.reconcileFindings(input);
   }
 
   getReviewFindings(repository: string, pullRequestNumber: number): ReviewFinding[] {
-    const rows = this.#database
-      .prepare(`
-        SELECT * FROM review_findings
-        WHERE repository = ? AND pull_request_number = ?
-        ORDER BY first_seen_job_id, fingerprint
-      `)
-      .all(repository, pullRequestNumber) as Array<Record<string, unknown>>;
-    return rows.map((row) => ({
-      evidence: String(row.evidence),
-      file: String(row.file),
-      fingerprint: String(row.fingerprint),
-      firstSeenJobId: Number(row.first_seen_job_id),
-      lastSeenJobId: Number(row.last_seen_job_id),
-      line: Number(row.line),
-      state: String(row.state) as ReviewFinding['state'],
-      title: String(row.title),
-    }));
+    return this.#reviewRepository.getReviewFindings(repository, pullRequestNumber);
   }
 
   activatePullRequestJob(job: ReviewJob): PullRequestState {
@@ -676,6 +533,8 @@ export class JobDatabase {
   updateJob(input: {
     checkRunId?: number;
     error?: string | null;
+    errorCode?: string | null;
+    errorExcerpt?: string | null;
     attempt?: number;
     expectedStates?: readonly string[];
     id: number;
@@ -684,9 +543,10 @@ export class JobDatabase {
     state: string;
   }): boolean {
     const conditions = ['id = ?'];
+    const rawError = input.error ?? null;
     const parameters: Array<number | string | null> = [
       input.state,
-      input.error ?? null,
+      rawError === null ? null : (redactFailureExcerpt(rawError).split('\n', 1)[0] ?? ''),
       input.checkRunId ?? null,
       input.resultPath ?? null,
       input.publishedReviewId ?? null,
@@ -701,30 +561,123 @@ export class JobDatabase {
       conditions.push(`state IN (${input.expectedStates.map(() => '?').join(', ')})`);
       parameters.push(...input.expectedStates);
     }
+    const excerpt =
+      input.errorExcerpt ?? (rawError === null ? null : redactFailureExcerpt(rawError));
+    const code = input.errorCode ?? (rawError === null ? null : 'UNKNOWN');
     const result = this.#database
       .prepare(`
         UPDATE review_jobs
         SET state = ?, error = ?, check_run_id = COALESCE(?, check_run_id),
             result_path = COALESCE(?, result_path),
-            published_review_id = COALESCE(?, published_review_id), updated_at = ?
+            published_review_id = COALESCE(?, published_review_id), error_code = COALESCE(?, error_code),
+            error_excerpt = COALESCE(?, error_excerpt), updated_at = ?
         WHERE ${conditions.join(' AND ')}
       `)
-      .run(...parameters);
-    return Number(result.changes) === 1;
+      .run(
+        ...[
+          parameters[0],
+          parameters[1],
+          parameters[2],
+          parameters[3],
+          parameters[4],
+          code,
+          excerpt,
+          parameters[5],
+          parameters[6],
+          ...parameters.slice(7),
+        ].map((value) => value ?? null),
+      );
+    const changed = Number(result.changes) === 1;
+    if (changed) {
+      const now = new Date().toISOString();
+      if (input.state === 'REVIEWING') {
+        this.#database
+          .prepare(
+            'UPDATE review_jobs SET review_started_at=COALESCE(review_started_at,?) WHERE id=?',
+          )
+          .run(now, input.id);
+      } else if (input.state === 'VALIDATING') {
+        this.#database
+          .prepare(
+            'UPDATE review_jobs SET review_completed_at=COALESCE(review_completed_at,?) WHERE id=?',
+          )
+          .run(now, input.id);
+      } else if (input.state === 'PUBLISHING') {
+        this.#database
+          .prepare(
+            'UPDATE review_jobs SET publication_started_at=COALESCE(publication_started_at,?) WHERE id=?',
+          )
+          .run(now, input.id);
+      } else if (input.state === 'DONE') {
+        this.#database
+          .prepare('UPDATE review_jobs SET published_at=COALESCE(published_at,?) WHERE id=?')
+          .run(now, input.id);
+      }
+    }
+    return changed;
   }
 
-  #ensureColumn(table: string, column: string, type: string): void {
-    const columns = this.#database.prepare(`PRAGMA table_info(${table})`).all() as Array<{
-      name: string;
-    }>;
-    if (!columns.some((candidate) => candidate.name === column)) {
-      this.#database.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
-    }
+  recordReviewMetadata(input: {
+    jobId: number;
+    baseSha?: string;
+    pullRequestTitle?: string;
+    model?: string;
+    reasoning?: string;
+    promptVersion?: string;
+    prompt?: string;
+    schemaVersion?: string;
+    schema?: string;
+  }): void {
+    this.#reviewRepository.recordReviewMetadata(input);
+  }
+
+  recordReviewArtifact(jobId: number, result: ReviewResult, schemaVersion?: string): string {
+    return this.#reviewRepository.recordReviewArtifact(jobId, result, schemaVersion);
+  }
+
+  getReviewArtifact(jobId: number): ReviewArtifact | undefined {
+    return this.#reviewRepository.getReviewArtifact(jobId);
+  }
+
+  setEvaluation(input: {
+    jobId: number;
+    targetType: EvaluationTarget;
+    findingFingerprint?: string;
+    verdict: ReviewVerdict | FindingVerdict;
+    rationale?: string;
+    expectedPreviousId: number | null;
+  }): EvaluationRevision {
+    return this.#evaluationRepository.setEvaluation(input);
+  }
+
+  withdrawEvaluation(input: {
+    jobId: number;
+    targetType: EvaluationTarget;
+    findingFingerprint?: string;
+    expectedPreviousId: number | null;
+  }): EvaluationRevision {
+    return this.#evaluationRepository.withdrawEvaluation(input);
+  }
+
+  getEvaluationHistory(
+    jobId: number,
+    targetType: EvaluationTarget,
+    findingFingerprint?: string,
+  ): EvaluationRevision[] {
+    return this.#evaluationRepository.getEvaluationHistory(jobId, targetType, findingFingerprint);
+  }
+
+  getCurrentEvaluation(
+    jobId: number,
+    targetType: EvaluationTarget,
+    findingFingerprint?: string,
+  ): EvaluationRevision | undefined {
+    return this.#evaluationRepository.getCurrentEvaluation(jobId, targetType, findingFingerprint);
   }
 }
 
 function mapReviewJob(row: Record<string, unknown>): ReviewJob {
-  return {
+  const job: ReviewJob = {
     action: String(row.action),
     attempt: Number(row.attempt ?? 0),
     deliveryId: String(row.delivery_id),
@@ -750,6 +703,22 @@ function mapReviewJob(row: Record<string, unknown>): ReviewJob {
           : undefined,
     state: String(row.state),
   };
+  const optional = {
+    ...(typeof row.base_sha === 'string' ? { baseSha: row.base_sha } : {}),
+    ...(typeof row.pull_request_title === 'string'
+      ? { pullRequestTitle: row.pull_request_title }
+      : {}),
+    ...(typeof row.model === 'string' ? { model: row.model } : {}),
+    ...(typeof row.reasoning === 'string' ? { reasoning: row.reasoning } : {}),
+    ...(typeof row.prompt_version === 'string' ? { promptVersion: row.prompt_version } : {}),
+    ...(typeof row.prompt_hash === 'string' ? { promptHash: row.prompt_hash } : {}),
+    ...(typeof row.schema_version === 'string' ? { schemaVersion: row.schema_version } : {}),
+    ...(typeof row.schema_hash === 'string' ? { schemaHash: row.schema_hash } : {}),
+    ...(typeof row.error_code === 'string' ? { errorCode: row.error_code } : {}),
+    ...(typeof row.error_excerpt === 'string' ? { errorExcerpt: row.error_excerpt } : {}),
+    ...(typeof row.artifact_hash === 'string' ? { artifactHash: row.artifact_hash } : {}),
+  };
+  return Object.assign(job, optional);
 }
 
 function mapPullRequestState(row: Record<string, unknown>): PullRequestState {

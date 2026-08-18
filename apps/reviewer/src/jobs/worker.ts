@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import type { CredentialStore } from '../github/credentials.js';
 import type { ReviewableLines } from '../review/diff-lines.js';
@@ -160,8 +160,9 @@ export class ReviewWorker {
         // must not terminate supervision for later jobs.
         const message = error instanceof Error ? error.message : String(error);
         console.error(`review job ${job.id} supervision failure: ${message}`);
-        this.options.database.updateJob({
+        const terminalized = this.options.database.updateJob({
           attempt: job.attempt ?? 0,
+          errorCode: isTimeoutError(error) ? 'TIMEOUT' : 'SUPERVISION_FAILED',
           error: message.slice(0, 4_000),
           expectedStates: [
             'CHECKING_OUT',
@@ -173,6 +174,9 @@ export class ReviewWorker {
           id: job.id,
           state: isTimeoutError(error) ? 'TIMED_OUT' : 'FAILED',
         });
+        if (terminalized) {
+          this.#removeEvents(job);
+        }
       }
     }
   }
@@ -280,19 +284,25 @@ export class ReviewWorker {
         repositoryId: pullRequest.repositoryId,
       });
 
-      this.options.database.updateJob({
+      const transitionedToSandbox = this.options.database.updateJob({
         attempt: job.attempt ?? 0,
         expectedStates: ['CHECKING_OUT'],
         id: job.id,
         state: 'SANDBOX_CREATING',
       });
+      if (!transitionedToSandbox) {
+        throw new Error('review job could not enter SANDBOX_CREATING');
+      }
       phase = 'SANDBOX_CREATING';
-      this.options.database.updateJob({
+      const transitionedToReview = this.options.database.updateJob({
         attempt: job.attempt ?? 0,
         expectedStates: ['SANDBOX_CREATING'],
         id: job.id,
         state: 'REVIEWING',
       });
+      if (!transitionedToReview) {
+        throw new Error('review job could not enter REVIEWING');
+      }
       phase = 'REVIEWING';
       const review = await this.options.reviewer.review({
         baseRef: pullRequest.baseRef,
@@ -310,6 +320,17 @@ export class ReviewWorker {
         reviewMode,
         signal: controller.signal,
         title: pullRequest.title,
+        onPromptPrepared: (snapshot) => {
+          this.options.database.recordReviewMetadata({
+            baseSha: pullRequest.baseSha,
+            jobId: job.id,
+            model: snapshot.model,
+            prompt: snapshot.prompt,
+            reasoning: snapshot.reasoning,
+            schema: snapshot.schema,
+            pullRequestTitle: pullRequest.title,
+          });
+        },
       });
       if (reviewMode === 'incremental' && review.reviewMode === 'full') {
         previousResult = undefined;
@@ -329,25 +350,32 @@ export class ReviewWorker {
         return;
       }
 
-      this.options.database.updateJob({
+      const transitionedToValidation = this.options.database.updateJob({
         attempt: job.attempt ?? 0,
         expectedStates: ['REVIEWING'],
         id: job.id,
         resultPath: review.path,
         state: 'VALIDATING',
       });
+      if (!transitionedToValidation) {
+        throw new Error('review job could not enter VALIDATING');
+      }
       phase = 'VALIDATING';
+      this.options.database.recordReviewArtifact(job.id, review.result);
       this.options.database.reconcileFindings({
         job,
         previousResult,
         result: review.result,
       });
-      this.options.database.updateJob({
+      const transitionedToPublishing = this.options.database.updateJob({
         attempt: job.attempt ?? 0,
         expectedStates: ['VALIDATING'],
         id: job.id,
         state: 'PUBLISHING',
       });
+      if (!transitionedToPublishing) {
+        throw new Error('review job could not enter PUBLISHING');
+      }
       phase = 'PUBLISHING';
       const { findingCount, findingLabel, stillPresentCount } = findingStatus(review.result);
       const reviewId = await this.#publishReview({
@@ -398,12 +426,16 @@ export class ReviewWorker {
         statusCommentId,
       });
       controller.signal.throwIfAborted();
-      this.options.database.updateJob({
+      const completed = this.options.database.updateJob({
         attempt: job.attempt ?? 0,
         expectedStates: ['PUBLISHING'],
         id: job.id,
         state: 'DONE',
       });
+      if (!completed) {
+        throw new Error('review job could not enter DONE');
+      }
+      this.#removeEvents(job);
       logCompletion(job, reviewId);
     } catch (error) {
       await this.#handleProcessFailure({
@@ -457,7 +489,7 @@ export class ReviewWorker {
           statusCommentId: input.statusCommentId,
         });
       } else {
-        this.options.database.updateJob({
+        const cancelled = this.options.database.updateJob({
           attempt: input.job.attempt ?? 0,
           expectedStates: [
             'CHECKING_OUT',
@@ -469,6 +501,9 @@ export class ReviewWorker {
           id: input.job.id,
           state: cancellation.state,
         });
+        if (cancelled) {
+          this.#removeEvents(input.job);
+        }
       }
       return;
     }
@@ -489,13 +524,17 @@ export class ReviewWorker {
 
     console.error(`review job ${input.job.id} failed: ${message}`);
     const timedOut = isTimeoutError(input.error);
-    this.options.database.updateJob({
+    const failed = this.options.database.updateJob({
       attempt: input.job.attempt ?? 0,
+      errorCode: timedOut ? 'TIMEOUT' : 'REVIEW_FAILED',
       error: message.slice(0, 4_000),
       expectedStates: [input.phase],
       id: input.job.id,
       state: timedOut ? 'TIMED_OUT' : 'FAILED',
     });
+    if (failed) {
+      this.#removeEvents(input.job);
+    }
     if (input.github !== undefined && input.checkRunId !== undefined) {
       try {
         await input.github.completeCheckRun({
@@ -650,6 +689,9 @@ export class ReviewWorker {
     if (!updated && !this.options.database.isJobAttemptCurrent({ attempt, jobId: input.job.id })) {
       return;
     }
+    if (updated) {
+      this.#removeEvents(input.job);
+    }
     await input.github.completeCheckRun({
       checkRunId: input.checkRunId,
       conclusion: 'cancelled',
@@ -672,6 +714,10 @@ export class ReviewWorker {
       job: input.job,
       statusCommentId: input.statusCommentId,
     });
+  }
+
+  #removeEvents(job: ReviewJob): void {
+    rmSync(join(this.options.jobsDirectory, String(job.id), 'codex-events.jsonl'), { force: true });
   }
 
   async #writeStatusComment(input: {

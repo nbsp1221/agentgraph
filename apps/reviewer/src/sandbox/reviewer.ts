@@ -43,6 +43,12 @@ export class SandboxReviewer {
     repository: string;
     signal: AbortSignal;
     title: string;
+    onPromptPrepared?: (snapshot: {
+      model: string;
+      reasoning: string;
+      prompt: string;
+      schema: string;
+    }) => void;
   }): Promise<SandboxReview> {
     const sandboxName = `retn0-assistant-job-${input.jobId}`;
     const sandboxOutputPath = '/tmp/retn0-assistant-review.json';
@@ -164,6 +170,12 @@ export class SandboxReviewer {
           ? ''
           : `\n\nRepository review policy (from the default branch):\n${input.policyInstructions.map((instruction) => `- ${instruction}`).join('\n')}`;
       const prompt = `${promptTemplate}\n\nPull request context:\n- Repository: ${input.repository}\n- Pull request: #${input.pullRequestNumber}\n- Title: ${input.title}\n- Review mode: ${reviewMode}\n- Base ref: ${input.baseRef}\n- Base SHA: ${input.baseSha}\n- Review base SHA: ${reviewBaseSha}\n- Head SHA: ${input.headSha}\n\n${boundaryInstruction}${policyContext}${previousContext}`;
+      input.onPromptPrepared?.({
+        model: this.options.model,
+        reasoning: this.options.reasoningEffort,
+        prompt,
+        schema: readFileSync(join(this.options.resourcesDirectory, 'review-schema.json'), 'utf8'),
+      });
 
       const codex = await runProcess(
         'sbx',

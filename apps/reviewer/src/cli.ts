@@ -68,7 +68,9 @@ export function run(args: readonly string[], startServer: () => void = serve): n
 function serve(): void {
   const config = loadServerConfig();
   const credentials = new CredentialStore(config.credentialsDirectory);
-  const database = new JobDatabase(config.databasePath);
+  const database = new JobDatabase(config.databasePath, {
+    dataRoot: config.jobsDirectory.replace(/[/\\]jobs$/, ''),
+  });
   const worker = new ReviewWorker({
     allowedOwnerId: config.allowedOwnerId,
     credentials,

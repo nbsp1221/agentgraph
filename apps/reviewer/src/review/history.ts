@@ -37,6 +37,29 @@ export function loadPreviousResults(paths: string[] | undefined): ReviewResult |
   };
 }
 
+export function mergePreviousResults(
+  results: readonly ReviewResult[] | undefined,
+): ReviewResult | undefined {
+  if (results === undefined || results.length === 0) {
+    return undefined;
+  }
+  const findings = new Map<string, ReviewResult['findings'][number]>();
+  for (const result of results) {
+    for (const finding of result.findings) {
+      const key = `${finding.file}:${finding.line}`;
+      if (!findings.has(key)) {
+        findings.set(key, finding);
+      }
+    }
+  }
+  return {
+    findings: [...findings.values()],
+    limitations: [],
+    summary: 'Previously reported findings',
+    tests_run: [],
+  };
+}
+
 export interface ReviewContext {
   previousResult: ReviewResult | undefined;
   reviewBaseSha: string;
@@ -51,7 +74,7 @@ export interface ReviewContext {
 export function selectReviewContext(input: {
   baseSha: string;
   forceFull?: boolean;
-  previousReview?: { headSha: string; resultPaths: string[] };
+  previousReview?: { headSha: string; resultPaths: string[]; results?: ReviewResult[] };
 }): ReviewContext {
   if (input.forceFull === true || input.previousReview === undefined) {
     return {
@@ -61,7 +84,9 @@ export function selectReviewContext(input: {
     };
   }
 
-  const previousResult = loadPreviousResults(input.previousReview.resultPaths);
+  const previousResult =
+    mergePreviousResults(input.previousReview.results) ??
+    loadPreviousResults(input.previousReview.resultPaths);
   if (previousResult === undefined) {
     console.warn(
       `previous review artifacts for ${input.previousReview.headSha} could not be loaded; using full review at ${input.baseSha}`,

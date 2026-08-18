@@ -44,6 +44,8 @@ describe('SandboxReviewer', () => {
       reasoningEffort: 'medium',
       resourcesDirectory,
     });
+    const prepared: Array<{ prompt: string; schema: string; model: string; reasoning: string }> =
+      [];
     await reviewer.review({
       baseRef: 'main',
       baseSha: 'a'.repeat(40),
@@ -58,7 +60,14 @@ describe('SandboxReviewer', () => {
       reviewMode: 'full',
       signal: new AbortController().signal,
       title: 'Test pull request',
+      onPromptPrepared: (snapshot) => prepared.push(snapshot),
     });
+    expect(prepared[0]).toMatchObject({
+      model: 'gpt-5.6-luna',
+      reasoning: 'medium',
+      schema: '{"type":"object"}\n',
+    });
+    expect(prepared[0]?.prompt).toContain('Title: Test pull request');
 
     const stagedResourcesDirectory = join(jobDirectory, 'review-resources');
     expect(readFileSync(join(stagedResourcesDirectory, 'review-prompt.md'), 'utf8')).toBe(
