@@ -7,6 +7,9 @@ export default defineConfig({
   entry: ['src/cli.ts'],
   format: ['esm'],
   outExtensions: () => ({ js: '.js' }),
+  deps: {
+    alwaysBundle: ['@agentgraph/contracts'],
+  },
   platform: 'node',
   sourcemap: true,
   target: 'node24',

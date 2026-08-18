@@ -6,6 +6,12 @@ coverage
 dist
 logs
 node_modules
+**/node_modules
+.pnpm-store
+**/.next
+**/.turbo
+**/dist
+**/*.tsbuildinfo
 tests
 var
 *.log

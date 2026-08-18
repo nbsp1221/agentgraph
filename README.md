@@ -92,15 +92,34 @@ Docker Compose provides a reproducible AgentGraph process, health reporting, and
 Validate and start the service:
 
 ```sh
-docker compose config
-docker compose build
+docker compose config --quiet
+docker compose build reviewer web
 docker compose up -d
 docker compose ps
 ```
 
-The service listens on the configurable loopback address and defaults to port `6571`. Runtime state stays with the checkout in `.agentgraph/`; no root-owned directory or system-wide application path is required. The data directory is mounted at the same absolute path because the host `sandboxd` daemon must be able to resolve per-job anchor and resource paths created by the container. Private repository contents are still cloned only inside the disposable Sandbox.
+Compose runs two independently healthy services: the reviewer listens on internal port `6571`, and the Next.js web app listens on internal port `6572`. The default host bindings are loopback-only (`REVIEWER_PORT=6571` and `WEB_PORT=6572`); set the corresponding `*_BIND_ADDRESS` values only when the deployment boundary requires it. The web service is intentionally not blocked on reviewer health, so it can show its degraded backend state while the reviewer recovers.
 
-Reverse proxy and external Docker network settings are deployment-specific and belong in a local `compose.override.yaml`, not the public base configuration. The sandbox daemon directory is mounted read-only rather than binding only the socket file, so a daemon restart can replace the socket without leaving the container attached to a stale inode. The healthcheck verifies both the HTTP process and daemon availability. Starting and supervising the host `sandboxd` process is an infrastructure prerequisite and is intentionally outside AgentGraph's deployment scope.
+Runtime state stays with the checkout in `.agentgraph/`; no root-owned directory or system-wide application path is required. Only the reviewer mounts the data directory, sandbox CLI/configuration, and sandbox daemon state. The data directory is mounted at the same absolute path because the host `sandboxd` daemon must be able to resolve per-job anchor and resource paths created by the reviewer container. The web container receives no GitHub credentials, sandbox mounts, or data volume. Private repository contents are still cloned only inside the disposable Sandbox.
+
+This MVP intentionally has no application-level authentication. Deploy the site only behind an operator-controlled private network such as Tailscale; anyone who can reach the site can read review artifacts and change evaluations. Within that trusted boundary, same-origin Caddy routing should send API and webhook paths to the reviewer and all other paths to the web service:
+
+```caddy
+github-assistant.example.com {
+    @reviewer path /api/* /healthz /webhooks/github /setup/github*
+    handle @reviewer {
+        reverse_proxy reviewer:6571
+    }
+
+    handle {
+        reverse_proxy web:6572
+    }
+}
+```
+
+The repository does not modify or reload an operating Caddy configuration. For local testing, the ignored `compose.override.yaml` connects both services to the existing external `caddy-network`; verify that network and the current Caddy aliases before use. Keep any host-specific Caddy file outside this repository or in an ignored local deployment directory.
+
+Before changing an operating Caddy route, save a backup, run `caddy validate --config <config>`, and inspect the rendered route priority. After explicit approval, use a graceful reload and smoke test both `https://<host>/en/reviews` and same-origin `/api/v1/status`; also verify an existing virtual host before and after the reload. Do not stop the Caddy container or reload unrelated virtual hosts. The sandbox daemon directory is mounted read-only rather than binding only the socket file, so a daemon restart can replace the socket without leaving the reviewer attached to a stale inode. Starting and supervising the host `sandboxd` process is an infrastructure prerequisite and is intentionally outside AgentGraph's deployment scope.
 
 ## License
 
