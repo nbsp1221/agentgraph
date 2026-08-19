@@ -82,7 +82,9 @@ test('browser evaluation writes use the real reviewer contracts', async ({
   );
 
   await page.getByRole('complementary').getByRole('button', { name: 'Withdraw' }).click();
-  await expect(page.getByText('Evaluation withdrawn.', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('complementary').getByText('Evaluation withdrawn.', { exact: true }),
+  ).toBeVisible();
   const evaluationsAfterWithdraw = await request.get(`${reviewerUrl}/api/v1/reviews/1/evaluations`);
   expect(
     ((await evaluationsAfterWithdraw.json()) as typeof evaluationData).review.current,
