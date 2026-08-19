@@ -56,7 +56,9 @@ export function ReviewEvaluationPanel({
   const [evaluationHistory, setEvaluationHistory] = useState(() =>
     [...history].sort((left, right) => right.id - left.id),
   );
-  const [previousId, setPreviousId] = useState<number | null>(current?.id ?? null);
+  const [previousId, setPreviousId] = useState<number | null>(
+    () => current?.id ?? latestRevisionId(history),
+  );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -273,5 +275,12 @@ export function ReviewEvaluationPanel({
         </Collapsible>
       ) : null}
     </div>
+  );
+}
+
+function latestRevisionId(history: ReviewEvaluation[]): number | null {
+  return history.reduce<number | null>(
+    (latest, revision) => (latest === null || revision.id > latest ? revision.id : latest),
+    null,
   );
 }

@@ -89,6 +89,24 @@ test('browser evaluation writes use the real reviewer contracts', async ({
   expect(
     ((await evaluationsAfterWithdraw.json()) as typeof evaluationData).review.current,
   ).toBeNull();
+
+  await page.reload();
+  const reviewEvaluation = page.getByRole('complementary');
+  await reviewEvaluation.getByRole('button', { name: 'Useful', exact: true }).click();
+  await reviewEvaluation.getByRole('textbox', { name: 'Rationale' }).fill('saved after withdrawal');
+  await reviewEvaluation.getByRole('button', { name: 'Save evaluation' }).click();
+  await expect(reviewEvaluation.getByRole('status')).toContainText('Evaluation saved');
+
+  await page.getByRole('button', { name: 'Evidence and suggested action' }).first().click();
+  const reloadedFinding = page.locator('article').first();
+  await reloadedFinding.getByRole('button', { name: 'Valid', exact: true }).click();
+  await reloadedFinding.getByRole('button', { name: 'Save evaluation' }).click();
+  await expect(reloadedFinding.getByRole('status')).toContainText('Evaluation saved');
+
+  const evaluationsAfterReload = await request.get(`${reviewerUrl}/api/v1/reviews/1/evaluations`);
+  const afterReload = (await evaluationsAfterReload.json()) as typeof evaluationData;
+  expect(afterReload.review.current?.verdict).toBe('useful');
+  expect(afterReload.findings[actualFingerprint]?.current?.verdict).toBe('valid');
 });
 
 test('browser preserves drafts on a 500 response', async ({ page }, testInfo) => {

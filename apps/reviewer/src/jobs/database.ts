@@ -206,12 +206,22 @@ export class JobDatabase {
       SET installation_id = ?, action = ?, delivery_id = ?, state = 'QUEUED',
           attempt = attempt + 1,
           error = NULL, check_run_id = NULL, result_path = NULL,
-          published_review_id = NULL, updated_at = ?
+          published_review_id = NULL,
+          base_sha = NULL, pull_request_title = NULL,
+          model = NULL, reasoning = NULL,
+          prompt_version = NULL, prompt_hash = NULL,
+          schema_version = NULL, schema_hash = NULL,
+          review_started_at = NULL, review_completed_at = NULL,
+          publication_started_at = NULL, published_at = NULL,
+          superseded_by_job_id = NULL,
+          error_code = NULL, error_excerpt = NULL, artifact_hash = NULL,
+          created_at = ?, updated_at = ?
       WHERE repository = ?
         AND pull_request_number = ?
         AND head_sha = ?
         AND policy_version = ?
         AND state IN ('CANCELLED', 'SUPERSEDED')
+      RETURNING id
     `);
     const supersedeOlderQueuedJobs = this.#database.prepare(`
       UPDATE review_jobs
@@ -251,18 +261,22 @@ export class JobDatabase {
       );
       const revivedJob =
         insertedJob.changes === 0
-          ? reviveJob.run(
+          ? (reviveJob.get(
               input.installationId,
               input.action,
               input.deliveryId,
+              now,
               now,
               input.repository,
               input.pullRequestNumber,
               input.headSha,
               input.policyVersion,
-            )
-          : { changes: 0 };
-      const jobCreated = insertedJob.changes === 1 || revivedJob.changes === 1;
+            ) as { id: number } | undefined)
+          : undefined;
+      if (revivedJob !== undefined) {
+        this.#database.prepare('DELETE FROM review_artifacts WHERE job_id = ?').run(revivedJob.id);
+      }
+      const jobCreated = insertedJob.changes === 1 || revivedJob !== undefined;
       const superseded = jobCreated
         ? supersedeOlderQueuedJobs.run(
             now,
@@ -334,6 +348,15 @@ export class JobDatabase {
       count: number;
     };
     return row.count;
+  }
+
+  isAvailable(): boolean {
+    try {
+      this.#database.prepare('SELECT 1').get();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   listReviewJobs(input: ReviewQuery): { items: ReviewQueryRow[]; totalItems: number } {

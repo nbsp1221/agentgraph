@@ -37,7 +37,7 @@ function createApi(
     observed('database', 'healthy');
   };
 
-  registerGitHubRoutes(app, config, database, credentials, hooks, observed, recordRead);
+  registerGitHubRoutes(app, config, database, credentials, hooks, observed);
   registerReviewRoutes(app, database, hooks, observations, recordRead);
   return app;
 }

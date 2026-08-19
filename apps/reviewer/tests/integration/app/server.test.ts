@@ -51,7 +51,11 @@ async function startServer(hooks: Parameters<typeof createAgentGraphServer>[3] =
   });
   resources.push(
     () => server.close(),
-    () => database.close(),
+    () => {
+      if (database.isAvailable()) {
+        database.close();
+      }
+    },
     () => rmSync(temporaryDirectory, { force: true, recursive: true }),
   );
   const address = server.address() as AddressInfo;
@@ -100,6 +104,15 @@ describe('AgentGraph server', () => {
 
   it('reports unhealthy when the worker is not running', async () => {
     const { url } = await startServer({ isWorkerRunning: () => false });
+    const response = await fetch(`${url}/healthz`);
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ status: 'unhealthy' });
+  });
+
+  it('reports unhealthy when the database is unavailable', async () => {
+    const { database, url } = await startServer();
+    database.close();
     const response = await fetch(`${url}/healthz`);
 
     expect(response.status).toBe(503);

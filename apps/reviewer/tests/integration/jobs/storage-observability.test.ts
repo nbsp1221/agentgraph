@@ -35,6 +35,78 @@ const result: ReviewResult = {
 };
 
 describe('review observability storage', () => {
+  it('clears attempt facts and artifacts when reviving a cancelled job', () => {
+    const database = new JobDatabase(':memory:');
+    database.enqueuePullRequest(input);
+    const job = database.claimNextJob();
+    if (job === undefined) {
+      throw new Error('expected a claimed job');
+    }
+    database.recordReviewMetadata({
+      baseSha: 'b'.repeat(40),
+      jobId: job.id,
+      model: 'old-model',
+      prompt: 'old prompt',
+      pullRequestTitle: 'Old title',
+      reasoning: 'low',
+      schema: '{}',
+    });
+    database.updateJob({
+      attempt: job.attempt ?? 0,
+      checkRunId: 10,
+      expectedStates: ['CHECKING_OUT'],
+      id: job.id,
+      state: 'REVIEWING',
+    });
+    database.updateJob({
+      attempt: job.attempt ?? 0,
+      expectedStates: ['REVIEWING'],
+      id: job.id,
+      resultPath: '/old/result.json',
+      state: 'VALIDATING',
+    });
+    database.recordReviewArtifact(job.id, result);
+    database.updateJob({
+      attempt: job.attempt ?? 0,
+      expectedStates: ['VALIDATING'],
+      id: job.id,
+      state: 'PUBLISHING',
+    });
+    expect(
+      database.cancelPullRequest({
+        action: 'converted_to_draft',
+        deliveryId: 'cancelled',
+        headSha: input.headSha,
+        installationId: input.installationId,
+        pullRequestNumber: input.pullRequestNumber,
+        repository: input.repository,
+      }),
+    ).toMatchObject({ jobsCancelled: 1 });
+    expect(database.getReviewArtifact(job.id)?.available).toBe(true);
+
+    expect(
+      database.enqueuePullRequest({
+        ...input,
+        action: 'ready_for_review',
+        deliveryId: 'revived',
+      }),
+    ).toMatchObject({ jobCreated: true });
+    expect(database.getReviewArtifact(job.id)).toBeUndefined();
+    const revived = database.getReviewJob(job.id);
+    expect(revived).toMatchObject({
+      action: 'ready_for_review',
+      state: 'QUEUED',
+    });
+    expect(revived?.artifactHash).toBeUndefined();
+    expect(revived?.checkRunId).toBeUndefined();
+    expect(revived?.model).toBeUndefined();
+    expect(revived?.pullRequestTitle).toBeUndefined();
+    expect(revived?.reviewCompletedAt).toBeUndefined();
+    expect(revived?.reviewStartedAt).toBeUndefined();
+    expect(revived?.resultPath).toBeUndefined();
+    database.close();
+  });
+
   it('migrates a legacy database idempotently and rolls back incompatible baseline detection', () => {
     const root = mkdtempSync('/tmp/agentgraph-migration-');
     try {

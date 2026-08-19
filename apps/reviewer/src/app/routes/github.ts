@@ -61,7 +61,6 @@ export function registerGitHubRoutes(
   credentials: CredentialStore,
   hooks: ServerHooks,
   observed: (dependency: Dependency, status: Observation['status'], detail?: string | null) => void,
-  recordRead: () => void,
 ): void {
   const registration = createGitHubManifestRegistration(
     config.uiBaseUrl,
@@ -75,6 +74,7 @@ export function registerGitHubRoutes(
     try {
       const workerRunning = (await hooks.isWorkerRunning?.()) ?? true;
       const sandboxAvailable = (await hooks.isSandboxAvailable?.()) ?? true;
+      const databaseAvailable = database.isAvailable();
       observed(
         'worker',
         hooks.isWorkerRunning === undefined ? 'unknown' : workerRunning ? 'healthy' : 'degraded',
@@ -97,12 +97,14 @@ export function registerGitHubRoutes(
             ? null
             : 'sandbox is unavailable',
       );
-      recordRead();
-      return json(
-        c,
-        { status: workerRunning && sandboxAvailable ? 'ok' : 'unhealthy' },
-        workerRunning && sandboxAvailable ? 200 : 503,
+      observed(
+        'database',
+        databaseAvailable ? 'healthy' : 'unavailable',
+        databaseAvailable ? null : 'database is unavailable',
       );
+      observed('api', 'healthy');
+      const healthy = workerRunning && sandboxAvailable && databaseAvailable;
+      return json(c, { status: healthy ? 'ok' : 'unhealthy' }, healthy ? 200 : 503);
     } catch {
       observed('api', 'degraded');
       return json(c, { status: 'unhealthy' }, 503);
