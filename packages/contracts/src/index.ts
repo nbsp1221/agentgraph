@@ -19,6 +19,29 @@ export const findingVerdictSchema = z.enum([
   'unable_to_verify',
 ]);
 
+export const reviewListQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  page_size: z.coerce
+    .number()
+    .int()
+    .refine((value) => value === 20, {
+      message: 'page_size must be 20',
+    })
+    .default(20),
+  sort: z.enum(['created', 'completed']).default('created'),
+  query: z.string().trim().optional(),
+  evaluation: z.enum(['evaluated', 'needs_evaluation']).optional(),
+  status: z.union([z.string(), z.array(z.string())]).optional(),
+});
+
+export const reviewIdParamsSchema = z.object({
+  reviewId: z.coerce.number().int().positive(),
+});
+
+export const findingParamsSchema = reviewIdParamsSchema.extend({
+  fingerprint: z.string().regex(/^[0-9a-f]{16}$/),
+});
+
 const isoDate = z.string().datetime({ offset: true });
 const nullableString = z.string().nullable();
 
@@ -164,10 +187,16 @@ export const reviewDetailSchema = z.object({
   review_evaluation: reviewEvaluationSchema.nullable(),
 });
 
-export const evaluationWriteRequestSchema = z.object({
+const evaluationWriteRequestSchema = z.object({
   verdict: z.union([reviewVerdictSchema, findingVerdictSchema]),
   rationale: z.string().trim().max(4000).optional(),
   expected_previous_id: z.number().int().positive().nullable(),
+});
+export const reviewEvaluationWriteRequestSchema = evaluationWriteRequestSchema.extend({
+  verdict: reviewVerdictSchema,
+});
+export const findingEvaluationWriteRequestSchema = evaluationWriteRequestSchema.extend({
+  verdict: findingVerdictSchema,
 });
 export const deleteEvaluationRequestSchema = z.object({
   expected_previous_id: z.number().int().positive().nullable(),
@@ -198,5 +227,7 @@ export type ReviewDetail = z.infer<typeof reviewDetailSchema>;
 export type ReviewEvaluation = z.infer<typeof reviewEvaluationSchema>;
 export type EvaluationHistory = z.infer<typeof evaluationHistorySchema>;
 export type EvaluationsResponse = z.infer<typeof evaluationsResponseSchema>;
-export type EvaluationWriteRequest = z.infer<typeof evaluationWriteRequestSchema>;
+export type ReviewEvaluationWriteRequest = z.infer<typeof reviewEvaluationWriteRequestSchema>;
+export type FindingEvaluationWriteRequest = z.infer<typeof findingEvaluationWriteRequestSchema>;
+export type DeleteEvaluationRequest = z.infer<typeof deleteEvaluationRequestSchema>;
 export type ContextResponse = z.infer<typeof contextResponseSchema>;

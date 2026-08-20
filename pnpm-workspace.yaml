@@ -9,7 +9,9 @@ allowBuilds:
   esbuild: true
   '@swc/core': true
   unrs-resolver: true
+  vue-demi: true
 
 minimumReleaseAgeExclude:
   - hono@4.13.3
   - lucide-react@1.32.0
+  - '@hono/zod-openapi@1.6.1'

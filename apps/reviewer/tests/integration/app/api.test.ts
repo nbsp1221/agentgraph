@@ -160,6 +160,14 @@ describe('versioned reviewer API contracts', () => {
       await (await fetch(`${url}/api/v1/reviews?status=failed`)).json(),
     );
     expect(failedList.items.some((item) => item.id === timedOut.id)).toBe(true);
+    const combinedStatusList = reviewListResponseSchema.parse(
+      await (await fetch(`${url}/api/v1/reviews?status=completed,failed&status=superseded`)).json(),
+    );
+    expect(combinedStatusList.items.map((item) => item.status)).toEqual(
+      expect.arrayContaining(['completed', 'failed']),
+    );
+    expect(combinedStatusList.items.every((item) => item.status !== 'queued')).toBe(true);
+    expect((await fetch(`${url}/api/v1/reviews?page_size=100`)).status).toBe(422);
     const detail = reviewDetailSchema.parse(
       await (await fetch(`${url}/api/v1/reviews/${job.id}`)).json(),
     );
@@ -253,6 +261,12 @@ describe('versioned reviewer API contracts', () => {
       body: JSON.stringify({ expected_previous_id: 'bad' }),
     });
     expect(invalidWithdraw.status).toBe(422);
+    await expect(invalidWithdraw.json()).resolves.toMatchObject({ code: 'INVALID_REQUEST' });
+    const missingWithdrawBody = await fetch(`${url}/api/v1/reviews/${job.id}/evaluation`, {
+      method: 'DELETE',
+    });
+    expect(missingWithdrawBody.status).toBe(422);
+    await expect(missingWithdrawBody.json()).resolves.toMatchObject({ code: 'INVALID_REQUEST' });
     const malformedWithdraw = await fetch(`${url}/api/v1/reviews/${job.id}/evaluation`, {
       method: 'DELETE',
       headers: { 'content-type': 'application/json' },
@@ -282,6 +296,75 @@ describe('versioned reviewer API contracts', () => {
     );
     expect(evaluations.review.current).toBeNull();
     expect(evaluations.review.history[0]?.action).toBe('withdraw');
+  });
+
+  it('enforces target-specific verdicts and supports lost-response recovery', async () => {
+    const { url, job } = await fixture();
+    const finding = result.findings[0];
+    if (finding === undefined) {
+      throw new Error('fixture finding is missing');
+    }
+    const fingerprint = findingFingerprint(finding);
+
+    const invalidReviewVerdict = await fetch(`${url}/api/v1/reviews/${job.id}/evaluation`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ verdict: 'false_positive', expected_previous_id: null }),
+    });
+    expect(invalidReviewVerdict.status).toBe(422);
+    await expect(invalidReviewVerdict.json()).resolves.toMatchObject({ code: 'INVALID_VERDICT' });
+
+    const invalidFindingVerdict = await fetch(
+      `${url}/api/v1/reviews/${job.id}/findings/${fingerprint}/evaluation`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ verdict: 'useful', expected_previous_id: null }),
+      },
+    );
+    expect(invalidFindingVerdict.status).toBe(422);
+    await expect(invalidFindingVerdict.json()).resolves.toMatchObject({
+      code: 'INVALID_VERDICT',
+    });
+
+    const firstWrite = await fetch(`${url}/api/v1/reviews/${job.id}/evaluation`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        verdict: 'useful',
+        rationale: 'Human approved this evaluation.',
+        expected_previous_id: null,
+      }),
+    });
+    expect(firstWrite.status).toBe(200);
+
+    const recovered = evaluationsResponseSchema.parse(
+      await (await fetch(`${url}/api/v1/reviews/${job.id}/evaluations`)).json(),
+    );
+    expect(recovered.review.current).toMatchObject({
+      verdict: 'useful',
+      rationale: 'Human approved this evaluation.',
+    });
+    expect(recovered.review.history).toHaveLength(1);
+
+    const unsafeRetry = await fetch(`${url}/api/v1/reviews/${job.id}/evaluation`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        verdict: 'useful',
+        rationale: 'Human approved this evaluation.',
+        expected_previous_id: null,
+      }),
+    });
+    expect(unsafeRetry.status).toBe(409);
+    await expect(unsafeRetry.json()).resolves.toMatchObject({
+      code: 'STALE_EVALUATION',
+      details: { id: recovered.review.current?.id },
+    });
+    const afterRetry = evaluationsResponseSchema.parse(
+      await (await fetch(`${url}/api/v1/reviews/${job.id}/evaluations`)).json(),
+    );
+    expect(afterRetry.review.history).toHaveLength(1);
   });
 
   it('excludes a valid-but-tampered artifact from findings and needs-evaluation', () => {

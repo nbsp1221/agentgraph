@@ -55,17 +55,21 @@ export function createObservations(): Observations {
   ) as Observations;
 }
 
-export function json(c: Context, body: unknown, status: ContentfulStatusCode = 200): Response {
+export function json<T, S extends ContentfulStatusCode = 200>(
+  c: Context,
+  body: T,
+  status: S = 200 as S,
+) {
   return c.json(body, status);
 }
 
-export function apiError(
+export function apiError<S extends ContentfulStatusCode>(
   c: Context,
-  status: ContentfulStatusCode,
+  status: S,
   error: string,
   code?: string,
   details?: unknown,
-): Response {
+) {
   const value = errorResponseSchema.parse({
     error,
     ...(code === undefined ? {} : { code }),
@@ -128,7 +132,7 @@ export function isoOrNull(value: unknown): string | null {
     : null;
 }
 
-export function evaluationError(c: Context, error: unknown): Response {
+export function evaluationError(c: Context, error: unknown) {
   if (error instanceof EvaluationConflictError) {
     return apiError(
       c,
@@ -166,7 +170,7 @@ export function evaluationHistory(
   return evaluationHistorySchema.parse({ current, history, truncated });
 }
 
-export function detailResponse(c: Context, database: JobDatabase, id: number): Response {
+export function detailResponse(c: Context, database: JobDatabase, id: number) {
   if (!Number.isSafeInteger(id) || id <= 0) {
     return apiError(c, 422, 'invalid review id', 'INVALID_ID');
   }
