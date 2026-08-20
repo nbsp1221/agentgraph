@@ -70,7 +70,14 @@ describe('agent-readable API documentation', () => {
       components?: { securitySchemes?: unknown };
       paths: Record<
         string,
-        Record<string, { operationId?: string; responses?: Record<string, unknown> }>
+        Record<
+          string,
+          {
+            operationId?: string;
+            parameters?: Array<{ name?: string; schema?: unknown }>;
+            responses?: Record<string, { description?: string }>;
+          }
+        >
       >;
     };
     expect(document.openapi).toBe('3.1.0');
@@ -153,6 +160,21 @@ describe('agent-readable API documentation', () => {
       expect(operation?.operationId).toBe(operationId);
       expect(Object.keys(operation?.responses ?? {}).sort()).toEqual([...statuses].sort());
     }
+
+    const listParameters = document.paths['/api/v1/reviews']?.get?.parameters ?? [];
+    const pageSizeSchema = listParameters.find(
+      (parameter) => parameter.name === 'page_size',
+    )?.schema;
+    expect(pageSizeSchema).toMatchObject({ type: 'number', const: 20, default: 20 });
+    const statusSchema = listParameters.find((parameter) => parameter.name === 'status')?.schema;
+    expect(JSON.stringify(statusSchema)).toContain(
+      JSON.stringify(['running', 'completed', 'failed', 'superseded', 'queued', 'cancelled']),
+    );
+    expect(JSON.stringify(statusSchema)).not.toContain('unknown');
+    expect(
+      document.paths['/api/v1/reviews/{reviewId}/evaluation']?.delete?.responses?.['422']
+        ?.description,
+    ).toContain('INVALID_EVALUATION');
 
     const serialized = JSON.stringify(document);
     expect(serialized).toContain('expected_previous_id');

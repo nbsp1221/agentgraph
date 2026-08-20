@@ -19,19 +19,37 @@ export const findingVerdictSchema = z.enum([
   'unable_to_verify',
 ]);
 
+const reviewStatusFilterSchema = z.enum([
+  'running',
+  'completed',
+  'failed',
+  'superseded',
+  'queued',
+  'cancelled',
+]);
+const reviewStatusFilterListSchema = z
+  .string()
+  .regex(
+    /^\s*(?:running|completed|failed|superseded|queued|cancelled)(?:\s*,\s*(?:running|completed|failed|superseded|queued|cancelled))*\s*$/,
+  );
+const reviewStatusFilterEntrySchema = z.union([
+  reviewStatusFilterSchema,
+  reviewStatusFilterListSchema,
+]);
+
 export const reviewListQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   page_size: z.coerce
     .number()
-    .int()
-    .refine((value) => value === 20, {
-      message: 'page_size must be 20',
-    })
-    .default(20),
+    .pipe(z.literal(20))
+    .default(20)
+    .meta({ type: 'number', const: 20, default: 20 }),
   sort: z.enum(['created', 'completed']).default('created'),
   query: z.string().trim().optional(),
   evaluation: z.enum(['evaluated', 'needs_evaluation']).optional(),
-  status: z.union([z.string(), z.array(z.string())]).optional(),
+  status: z
+    .union([reviewStatusFilterEntrySchema, z.array(reviewStatusFilterEntrySchema)])
+    .optional(),
 });
 
 export const reviewIdParamsSchema = z.object({

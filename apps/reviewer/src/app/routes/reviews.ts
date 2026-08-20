@@ -57,7 +57,7 @@ const notFoundResponse = jsonResponse(
 );
 const invalidRequestResponse = jsonResponse(
   errorResponseSchema,
-  'The path, query, target, state, or request body is invalid. The response code identifies INVALID_ID, INVALID_QUERY, INVALID_REQUEST, INVALID_VERDICT, INVALID_TARGET, or INVALID_STATE.',
+  'The path, query, target, state, evaluation, or request body is invalid. The response code identifies INVALID_ID, INVALID_QUERY, INVALID_REQUEST, INVALID_VERDICT, INVALID_TARGET, INVALID_STATE, or INVALID_EVALUATION.',
 );
 const conflictResponse = jsonResponse(
   errorResponseSchema,

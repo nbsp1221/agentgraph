@@ -21,6 +21,12 @@ describe('review API request contracts', () => {
       'completed',
       'failed',
     ]);
+    expect(reviewListQuerySchema.safeParse({ status: 'completed, failed' }).success).toBe(true);
+    expect(
+      reviewListQuerySchema.safeParse({ status: ['completed,failed', 'superseded'] }).success,
+    ).toBe(true);
+    expect(reviewListQuerySchema.safeParse({ status: 'unknown' }).success).toBe(false);
+    expect(reviewListQuerySchema.safeParse({ status: 'arbitrary' }).success).toBe(false);
   });
 
   it('coerces positive review IDs and validates finding fingerprints', () => {
