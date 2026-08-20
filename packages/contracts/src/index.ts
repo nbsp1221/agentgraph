@@ -30,7 +30,7 @@ const reviewStatusFilterSchema = z.enum([
 const reviewStatusFilterListSchema = z
   .string()
   .regex(
-    /^\s*(?:running|completed|failed|superseded|queued|cancelled)(?:\s*,\s*(?:running|completed|failed|superseded|queued|cancelled))*\s*$/,
+    /^\s*(?:running|completed|failed|superseded|queued|cancelled)(?:\s*,\s*(?:running|completed|failed|superseded|queued|cancelled))*\s*$/i,
   );
 const reviewStatusFilterEntrySchema = z.union([
   reviewStatusFilterSchema,

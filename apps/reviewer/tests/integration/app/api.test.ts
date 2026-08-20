@@ -141,6 +141,8 @@ describe('versioned reviewer API contracts', () => {
     expect(list.items).toHaveLength(20);
     expect(list.items[0]?.id).toBeGreaterThan(list.items[1]?.id ?? 0);
     expect((await fetch(`${url}/api/v1/reviews?status=completed`)).status).toBe(200);
+    expect((await fetch(`${url}/api/v1/reviews?status=Completed`)).status).toBe(200);
+    expect((await fetch(`${url}/api/v1/reviews?status=completed,FAILED`)).status).toBe(200);
     expect((await fetch(`${url}/api/v1/reviews?page=0`)).status).toBe(422);
     database.enqueuePullRequest({
       action: 'opened',
