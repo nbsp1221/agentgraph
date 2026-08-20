@@ -1,2 +1,15 @@
+packages:
+  - apps/*
+  - packages/*
+
+injectWorkspacePackages: true
+
 allowBuilds:
+  '@parcel/watcher': true
   esbuild: true
+  '@swc/core': true
+  unrs-resolver: true
+
+minimumReleaseAgeExclude:
+  - hono@4.13.3
+  - lucide-react@1.32.0

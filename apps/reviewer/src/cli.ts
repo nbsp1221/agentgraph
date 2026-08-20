@@ -1,0 +1,167 @@
+import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+import { type CAC, cac } from 'cac';
+import { loadServerConfig } from './app/config.js';
+import { createAgentGraphServer } from './app/server.js';
+import { GitHubAppClient } from './github/client.js';
+import { CredentialStore } from './github/credentials.js';
+import { ManualCommandHandler } from './jobs/command-handler.js';
+import { JobDatabase } from './jobs/database.js';
+import { ReviewWorker } from './jobs/worker.js';
+import { recoverOrphanSandboxes } from './sandbox/recovery.js';
+import { SandboxReviewer } from './sandbox/reviewer.js';
+import { runProcess } from './system/process.js';
+
+interface PackageMetadata {
+  version: string;
+}
+
+const packageMetadata = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+) as PackageMetadata;
+
+export function createCli(startServer: () => void = serve): CAC {
+  const cli = cac('agentgraph');
+
+  cli.command('serve', 'Start the AgentGraph service').action(startServer);
+  cli.help();
+  cli.version(packageMetadata.version);
+
+  return cli;
+}
+
+export function run(args: readonly string[], startServer: () => void = serve): number {
+  const cli = createCli(startServer);
+
+  if (args.length === 0) {
+    cli.outputHelp();
+    return 0;
+  }
+
+  cli.parse(['node', 'agentgraph', ...args], { run: false });
+
+  if (cli.options.help || cli.options.version) {
+    return 0;
+  }
+
+  if (!cli.matchedCommand && cli.args[0]) {
+    console.error(`Unknown command: ${cli.args[0]}`);
+    return 1;
+  }
+
+  const command = cli.matchedCommand ?? cli.globalCommand;
+
+  try {
+    command.checkUnknownOptions();
+    command.checkOptionValue();
+    command.checkRequiredArgs();
+    command.checkUnusedArgs();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    return 1;
+  }
+
+  cli.runMatchedCommand();
+
+  return 0;
+}
+
+function serve(): void {
+  const config = loadServerConfig();
+  const credentials = new CredentialStore(config.credentialsDirectory);
+  const database = new JobDatabase(config.databasePath, {
+    dataRoot: config.jobsDirectory.replace(/[/\\]jobs$/, ''),
+  });
+  const worker = new ReviewWorker({
+    allowedOwnerId: config.allowedOwnerId,
+    credentials,
+    database,
+    jobsDirectory: config.jobsDirectory,
+    reviewer: new SandboxReviewer({
+      model: config.model,
+      reasoningEffort: config.reasoningEffort,
+      resourcesDirectory: config.resourcesDirectory,
+    }),
+  });
+  const commandHandler = new ManualCommandHandler({ credentials, database, worker });
+  const server = createAgentGraphServer(config, database, credentials, {
+    isSandboxAvailable: sandboxDaemonAvailable,
+    isWorkerRunning: () => worker.isRunning,
+    onJobQueued: (job) => worker.cancelSuperseded(job),
+    onManualCommand: (command) => commandHandler.handle(command),
+    onPullRequestCancelled: (cancellation) => worker.cancelPullRequest(cancellation),
+    getFindingContext: (input) => new GitHubAppClient(credentials.read()).getFindingContext(input),
+  });
+
+  let shuttingDown = false;
+
+  const shutdown = () => {
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
+
+    // Stop accepting new requests first. Existing requests are allowed to
+    // drain while the worker aborts and requeues active jobs; only then is it
+    // safe to close SQLite.
+    const serverClosed = new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error !== undefined) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+    void (async () => {
+      try {
+        await worker.stop();
+        await serverClosed;
+        database.close();
+        process.exitCode = 0;
+      } catch (error) {
+        console.error('graceful shutdown failed', error);
+        database.close();
+        process.exitCode = 1;
+      }
+    })();
+  };
+
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
+
+  server.listen(config.port, config.host, () => {
+    console.log(`AgentGraph listening on http://${config.host}:${config.port}`);
+    void startWorkerAfterRecovery(database, worker);
+  });
+}
+
+async function startWorkerAfterRecovery(
+  database: JobDatabase,
+  worker: ReviewWorker,
+): Promise<void> {
+  try {
+    const removed = await recoverOrphanSandboxes(database.getActiveJobIds());
+    if (removed.length > 0) {
+      console.log(`removed ${removed.length} orphan review sandbox(es): ${removed.join(', ')}`);
+    }
+  } catch (error) {
+    console.warn('orphan review sandbox recovery failed; continuing startup', error);
+  }
+  worker.start();
+}
+
+async function sandboxDaemonAvailable(): Promise<boolean> {
+  try {
+    await runProcess('sbx', ['daemon', 'status'], { timeoutMilliseconds: 5_000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const entrypoint = process.argv[1];
+
+if (entrypoint !== undefined && import.meta.url === pathToFileURL(entrypoint).href) {
+  process.exitCode = run(process.argv.slice(2));
+}

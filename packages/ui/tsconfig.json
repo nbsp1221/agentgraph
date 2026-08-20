@@ -1,0 +1,4 @@
+{
+  "extends": "@agentgraph/typescript-config/react-library.json",
+  "include": ["src"]
+}

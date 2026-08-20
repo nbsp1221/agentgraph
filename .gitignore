@@ -1,7 +1,12 @@
 # Dependencies and build output
 node_modules/
 dist/
+.next/
+*.tsbuildinfo
+next-env.d.ts
+.turbo/
 coverage/
+test-results/
 
 # Runtime state
 .agentgraph/

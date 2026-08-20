@@ -5,31 +5,21 @@
   "description": "Local-first control plane for running AI work loops to verified completion",
   "license": "MIT",
   "author": "nbsp1221",
-  "bin": {
-    "agentgraph": "dist/cli.js"
-  },
   "type": "module",
   "scripts": {
-    "build": "tsdown",
+    "build": "turbo run build",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:dist",
-    "dev": "tsx src/cli.ts",
+    "dev": "turbo run dev --parallel",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint . && eslint .",
-    "test": "vitest run",
-    "test:dist": "node dist/cli.js --version",
-    "test:e2e": "vitest run --project e2e",
-    "test:integration": "vitest run --project integration",
-    "test:unit": "vitest run --project unit",
-    "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@octokit/app": "16.1.4",
-    "cac": "7.0.0",
-    "execa": "10.0.1",
-    "yaml": "^2.9.0",
-    "zod": "4.4.3"
+    "test": "turbo run test",
+    "test:dist": "turbo run test:dist",
+    "test:e2e": "turbo run test:e2e",
+    "test:integration": "turbo run test:integration",
+    "test:unit": "turbo run test:unit",
+    "test:watch": "pnpm --filter @agentgraph/reviewer test:watch",
+    "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
     "@retn0/eslint-config": "2.1.0",
@@ -38,11 +28,13 @@
     "@retn0/oxlint-config": "2.2.0",
     "@types/node": "24.13.3",
     "eslint": "10.7.0",
+    "eslint-config-next": "16.3.1",
     "oxfmt": "0.59.0",
     "oxlint": "1.73.0",
     "oxlint-tsgolint": "0.25.0",
     "tsdown": "0.22.14",
     "tsx": "4.22.4",
+    "turbo": "2.10.10",
     "typescript": "6.0.3",
     "vitest": "4.1.10"
   },

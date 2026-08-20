@@ -1,19 +1,22 @@
 name: agentgraph
 
 services:
-  agentgraph:
+  reviewer:
     build:
       context: .
-    image: agentgraph:local
+      target: reviewer
+    image: agentgraph-reviewer:local
     init: true
     restart: unless-stopped
     stop_grace_period: 2m
     env_file:
       - .env
     environment:
+      APP_DATA_DIRECTORY: ${APP_DATA_DIRECTORY:?Set APP_DATA_DIRECTORY in .env}
       APP_HOST: 0.0.0.0
+      APP_PORT: '6571'
     ports:
-      - '${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-6571}:${APP_PORT:-6571}'
+      - '${REVIEWER_BIND_ADDRESS:-127.0.0.1}:${REVIEWER_PORT:-6571}:6571'
     volumes:
       - ${APP_DATA_DIRECTORY:?Set APP_DATA_DIRECTORY in .env}:${APP_DATA_DIRECTORY:?Set APP_DATA_DIRECTORY in .env}
       - ${SANDBOX_CLI_PATH:-/usr/bin/sbx}:/usr/local/bin/sbx:ro
@@ -23,10 +26,41 @@ services:
     healthcheck:
       test:
         [
-          'CMD-SHELL',
-          'wget --quiet --output-document=/dev/null http://127.0.0.1:${APP_PORT:-6571}/healthz',
+          'CMD',
+          'node',
+          '--input-type=module',
+          '-e',
+          "fetch('http://127.0.0.1:6571/healthz').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
         ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  web:
+    build:
+      context: .
+      target: web
+    image: agentgraph-web:local
+    init: true
+    restart: unless-stopped
+    environment:
+      HOSTNAME: 0.0.0.0
+      NODE_ENV: production
+      PORT: '6572'
+      REVIEWER_INTERNAL_URL: http://reviewer:6571
+    ports:
+      - '${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-6572}:6572'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '--input-type=module',
+          '-e',
+          "fetch('http://127.0.0.1:6572/en/reviews').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

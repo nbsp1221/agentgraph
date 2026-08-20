@@ -1,0 +1,39 @@
+{
+  "name": "@agentgraph/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "pretypecheck": "next typegen",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:unit": "vitest run"
+  },
+  "dependencies": {
+    "@agentgraph/contracts": "workspace:*",
+    "@agentgraph/ui": "workspace:*",
+    "@tanstack/react-table": "9.1.2",
+    "lucide-react": "1.32.0",
+    "next": "16.3.1",
+    "next-intl": "4.13.7",
+    "next-themes": "0.4.6",
+    "nuqs": "2.9.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@agentgraph/typescript-config": "workspace:*",
+    "@playwright/test": "1.62.1",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "24.13.3",
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
+  }
+}
