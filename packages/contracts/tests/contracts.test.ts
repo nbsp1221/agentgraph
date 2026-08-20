@@ -25,7 +25,9 @@ describe('review API request contracts', () => {
     expect(
       reviewListQuerySchema.safeParse({ status: ['completed,failed', 'superseded'] }).success,
     ).toBe(true);
-    expect(reviewListQuerySchema.safeParse({ status: 'Completed, FAILED' }).success).toBe(true);
+    expect(reviewListQuerySchema.parse({ status: 'Completed, FAILED' }).status).toBe(
+      'completed, failed',
+    );
     expect(reviewListQuerySchema.safeParse({ status: 'unknown' }).success).toBe(false);
     expect(reviewListQuerySchema.safeParse({ status: 'arbitrary' }).success).toBe(false);
   });

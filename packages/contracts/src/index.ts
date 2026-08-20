@@ -30,12 +30,16 @@ const reviewStatusFilterSchema = z.enum([
 const reviewStatusFilterListSchema = z
   .string()
   .regex(
-    /^\s*(?:running|completed|failed|superseded|queued|cancelled)(?:\s*,\s*(?:running|completed|failed|superseded|queued|cancelled))*\s*$/i,
+    /^\s*(?:running|completed|failed|superseded|queued|cancelled)(?:\s*,\s*(?:running|completed|failed|superseded|queued|cancelled))*\s*$/,
   );
-const reviewStatusFilterEntrySchema = z.union([
+const canonicalReviewStatusFilterEntrySchema = z.union([
   reviewStatusFilterSchema,
   reviewStatusFilterListSchema,
 ]);
+const reviewStatusFilterEntrySchema = z.preprocess(
+  (value) => (typeof value === 'string' ? value.toLowerCase() : value),
+  canonicalReviewStatusFilterEntrySchema,
+);
 
 export const reviewListQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),

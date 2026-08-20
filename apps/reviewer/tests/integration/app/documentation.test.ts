@@ -171,6 +171,22 @@ describe('agent-readable API documentation', () => {
       JSON.stringify(['running', 'completed', 'failed', 'superseded', 'queued', 'cancelled']),
     );
     expect(JSON.stringify(statusSchema)).not.toContain('unknown');
+
+    const findPattern = (schema: unknown): string | undefined => {
+      if (schema === null || typeof schema !== 'object') {
+        return undefined;
+      }
+      const value = schema as Record<string, unknown>;
+      if (typeof value.pattern === 'string') {
+        return value.pattern;
+      }
+      return Object.values(value).map(findPattern).find(Boolean);
+    };
+
+    const commaSeparatedStatusPattern = findPattern(statusSchema);
+    expect(commaSeparatedStatusPattern).toBeDefined();
+    expect(new RegExp(commaSeparatedStatusPattern ?? '').test('completed,failed')).toBe(true);
+    expect(commaSeparatedStatusPattern).not.toContain('/i');
     expect(
       document.paths['/api/v1/reviews/{reviewId}/evaluation']?.delete?.responses?.['422']
         ?.description,
