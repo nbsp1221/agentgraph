@@ -107,13 +107,13 @@ export function removePreviouslyReportedFindings(
 }
 
 const checkStatusMarkers: Record<ReviewResult['tests_run'][number]['status'], string> = {
-  passed: '✓ passed',
-  failed: '× failed',
-  not_run: '– not run',
+  passed: '🟢',
+  failed: '🔴',
+  not_run: '⚪',
 };
 
-function escapeTableCell(value: string): string {
-  return value.replaceAll('|', '\\|').replaceAll(/\r?\n/g, '<br>');
+function renderCheckEvidence(value: string): string {
+  return value.replaceAll(/\r?\n/g, '<br>');
 }
 
 export function renderReview(
@@ -163,17 +163,15 @@ export function renderReview(
 
     sections.push(
       '',
-      `${counts.passed} passed · ${counts.failed} failed · ${counts.not_run} not run`,
+      `**${counts.passed} passed · ${counts.failed} failed · ${counts.not_run} not run**`,
       '',
       disclosure,
       `<summary>Show ${result.tests_run.length} checks</summary>`,
       '',
-      '| Status | Check | Evidence |',
-      '| --- | --- | --- |',
     );
     for (const test of result.tests_run) {
       sections.push(
-        `| ${checkStatusMarkers[test.status]} | \`${escapeTableCell(test.command)}\` | ${escapeTableCell(test.evidence)} |`,
+        `- ${checkStatusMarkers[test.status]} **${test.status === 'not_run' ? 'not run' : test.status}** \`${test.command}\` — ${renderCheckEvidence(test.evidence)}`,
       );
     }
     sections.push('', '</details>');

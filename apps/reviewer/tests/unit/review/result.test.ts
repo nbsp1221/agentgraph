@@ -153,19 +153,20 @@ describe('review markdown checks', () => {
     },
   ];
 
-  it('renders aggregate counts and one row per passed check in a closed table', () => {
+  it('renders aggregate counts and one bullet per passed check in a closed disclosure', () => {
     const body = renderReview({ ...previous, tests_run: checks });
 
     expect(body).toContain('### Checks');
-    expect(body).toContain('3 passed · 0 failed · 0 not run');
+    expect(body).toContain('**3 passed · 0 failed · 0 not run**');
     expect(body).toContain('<details>');
     expect(body).not.toContain('<details open>');
     expect(body).toContain('<summary>Show 3 checks</summary>');
-    expect(body.match(/^\| ✓ passed \|/gm)).toHaveLength(3);
+    expect(body.match(/^- 🟢 \*\*passed\*\*/gm)).toHaveLength(3);
+    expect(body).not.toContain('| Status | Check | Evidence |');
     expect(body).not.toContain('### Verification');
   });
 
-  it('opens the table when a check failed or was not run', () => {
+  it('opens the disclosure when a check failed or was not run', () => {
     const body = renderReview({
       ...previous,
       tests_run: [
@@ -175,21 +176,20 @@ describe('review markdown checks', () => {
       ],
     });
 
-    expect(body).toContain('3 passed · 1 failed · 1 not run');
+    expect(body).toContain('**3 passed · 1 failed · 1 not run**');
     expect(body).toContain('<details open>');
-    expect(body).toContain('| × failed | `pnpm deploy` | Command failed. |');
-    expect(body).toContain('| – not run | `pnpm e2e` | Skipped by CI. |');
+    expect(body).toContain('- 🔴 **failed** `pnpm deploy` — Command failed.');
+    expect(body).toContain('- ⚪ **not run** `pnpm e2e` — Skipped by CI.');
   });
 
-  it('renders an explicit empty state without an empty table', () => {
+  it('renders an explicit empty state without an empty disclosure', () => {
     const body = renderReview({ ...previous, tests_run: [] });
 
     expect(body).toContain('### Checks\n\nNo checks were run.');
-    expect(body).not.toContain('| Status | Check | Evidence |');
     expect(body).not.toContain('<details>');
   });
 
-  it('escapes table-sensitive check content while preserving findings and limitations', () => {
+  it('preserves multiline check evidence while preserving findings and limitations', () => {
     const body = renderReview({
       ...previous,
       findings: [],
@@ -205,7 +205,7 @@ describe('review markdown checks', () => {
     });
 
     expect(body).toContain(
-      '| ✓ passed | `pnpm test \\| tee result.log` | Output line one<br>Output \\| line two. |',
+      '- 🟢 **passed** `pnpm test | tee result.log` — Output line one<br>Output | line two.',
     );
     expect(body).toContain('### Findings\n\nNo actionable defects found.');
     expect(body).toContain('### Limitations\n\n- The sandbox was unavailable.');
