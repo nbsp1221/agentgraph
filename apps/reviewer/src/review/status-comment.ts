@@ -1,4 +1,4 @@
-import type { ReviewResult } from './result.js';
+import { type ReviewResult, reviewCoverage } from './result.js';
 
 interface ReviewStatusJob {
   headSha: string;
@@ -58,7 +58,9 @@ export function renderCompletedComment(input: {
       ? `${verification}; no new defect was attributed to this push`
       : verification || 'no tests run';
   const seconds = Math.max(1, Math.round(input.durationMilliseconds / 1_000));
-  const icon = findingCount === 0 && stillPresentCount === 0 ? '🟢' : '🟡';
+  const coverage = reviewCoverage(input.result);
+  const icon =
+    coverage?.complete !== true ? '⚪' : findingCount > 0 || stillPresentCount > 0 ? '🟡' : '🟢';
   const findingDescription =
     input.reviewMode === 'incremental'
       ? `${findingCount} new ${findingLabel}`
@@ -67,6 +69,8 @@ export function renderCompletedComment(input: {
     input.reviewId === undefined
       ? ''
       : `[Open review](https://github.com/${input.job.repository}/pull/${input.job.pullRequestNumber}#pullrequestreview-${input.reviewId}) · `;
+  const reviewBaseShort = input.reviewBaseSha.slice(0, 7);
+  const headShort = input.job.headSha.slice(0, 7);
   const lifecycle = [
     ...(stillPresentCount === 0
       ? []
@@ -79,6 +83,14 @@ export function renderCompletedComment(input: {
           `- ${fixedCount} existing ${fixedCount === 1 ? 'finding was' : 'findings were'} verified fixed`,
         ]),
   ];
+  const coverageLine =
+    coverage === undefined
+      ? []
+      : [
+          `- ${coverage.reviewed} of ${coverage.changed} changed files reviewed${
+            coverage.omitted === 0 ? '' : ` · ${coverage.omitted} omitted`
+          }`,
+        ];
 
   return [
     '<!-- retn0-assistant:review-status -->',
@@ -88,11 +100,10 @@ export function renderCompletedComment(input: {
     '',
     `- ${findingDescription}`,
     ...lifecycle,
+    ...coverageLine,
     `- Verification: ${verificationDescription}`,
-    `- Reviewed changes: \`${input.reviewBaseSha.slice(0, 7)}..${input.job.headSha.slice(0, 7)}\``,
-    `- Reviewed commit: \`${input.job.headSha.slice(0, 7)}\``,
     '',
-    `${reviewLink}[View check run](https://github.com/${input.job.repository}/runs/${input.checkRunId})`,
+    `[Changes \`${reviewBaseShort}..${headShort}\`](https://github.com/${input.job.repository}/compare/${input.reviewBaseSha}...${input.job.headSha}) · [Commit \`${headShort}\`](https://github.com/${input.job.repository}/commit/${input.job.headSha}) · ${reviewLink}[View check run](https://github.com/${input.job.repository}/runs/${input.checkRunId})`,
   ].join('\n');
 }
 

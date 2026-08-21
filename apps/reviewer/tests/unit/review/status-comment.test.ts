@@ -24,6 +24,12 @@ const job: ReviewJob = {
 };
 
 const result: ReviewResult = {
+  coverage: {
+    changed_files: ['src/access.mjs'],
+    complete: true,
+    omitted_files: [],
+    reviewed_files: ['src/access.mjs'],
+  },
   findings: [],
   limitations: [],
   summary: 'No findings',
@@ -57,7 +63,14 @@ describe('review status comments', () => {
     expect(comment).toContain('🟢 Incremental review completed in 2s');
     expect(comment).toContain('0 new findings');
     expect(comment).toContain('Verification: 1 passed');
+    expect(comment).toContain('1 of 1 changed files reviewed');
     expect(comment).toContain('`aaaaaaa..bbbbbbb`');
+    expect(comment).toContain(
+      '[Changes `aaaaaaa..bbbbbbb`](https://github.com/example/project/compare/aaaaaaa1111111111111111111111111111111111...bbbbbbb2222222222222222222222222222222222)',
+    );
+    expect(comment).toContain(
+      '[Commit `bbbbbbb`](https://github.com/example/project/commit/bbbbbbb2222222222222222222222222222222222)',
+    );
   });
 
   it('shows unresolved previous findings as a neutral lifecycle result', () => {
@@ -95,5 +108,44 @@ describe('review status comments', () => {
     expect(comment).toContain('Phase: sandbox creating');
     expect(comment).toContain('Error: first line');
     expect(comment).not.toContain('sensitive detail');
+  });
+
+  it('marks incomplete coverage as neutral and reports omitted files', () => {
+    const comment = renderCompletedComment({
+      checkRunId: 123,
+      durationMilliseconds: 1_500,
+      job,
+      result: {
+        ...result,
+        coverage: {
+          changed_files: ['src/access.mjs', 'src/server.mjs'],
+          complete: false,
+          omitted_files: ['src/server.mjs'],
+          reviewed_files: ['src/access.mjs'],
+        },
+      },
+      reviewBaseSha: 'aaaaaaa1111111111111111111111111111111111',
+      reviewId: undefined,
+      reviewMode: 'full',
+    });
+
+    expect(comment).toContain('⚪ Review completed');
+    expect(comment).toContain('1 of 2 changed files reviewed · 1 omitted');
+  });
+
+  it('does not invent a coverage denominator when coverage is unavailable', () => {
+    const comment = renderCompletedComment({
+      checkRunId: 123,
+      durationMilliseconds: 1_500,
+      job,
+      result: { ...result, coverage: undefined },
+      reviewBaseSha: 'aaaaaaa1111111111111111111111111111111111',
+      reviewId: undefined,
+      reviewMode: 'full',
+    });
+
+    expect(comment).toContain('⚪ Review completed');
+    expect(comment).not.toContain('0 of 0');
+    expect(comment).not.toContain('changed files reviewed');
   });
 });

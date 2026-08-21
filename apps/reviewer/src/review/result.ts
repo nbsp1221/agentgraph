@@ -46,6 +46,40 @@ export type ReviewResult = z.infer<typeof reviewResultSchema>;
 
 export type ReviewConclusion = 'neutral' | 'success';
 
+function normalizedPaths(paths: readonly string[]): Set<string> {
+  return new Set(paths.map((path) => path.replace(/^\.\//, '').trim().toLowerCase()));
+}
+
+export function reviewCoverage(result: ReviewResult):
+  | {
+      changed: number;
+      omitted: number;
+      reviewed: number;
+      complete: boolean;
+    }
+  | undefined {
+  if (result.coverage === undefined) {
+    return undefined;
+  }
+  const changedFiles = normalizedPaths(result.coverage.changed_files);
+  if (changedFiles.size === 0) {
+    return undefined;
+  }
+  const reviewedFiles = normalizedPaths(result.coverage.reviewed_files);
+  const omittedFiles = normalizedPaths(result.coverage.omitted_files);
+  const reviewed = [...reviewedFiles].filter((file) => changedFiles.has(file)).length;
+  const omitted = [...omittedFiles].filter((file) => changedFiles.has(file)).length;
+  return {
+    changed: changedFiles.size,
+    omitted,
+    reviewed,
+    complete:
+      result.coverage.complete &&
+      omittedFiles.size === 0 &&
+      [...changedFiles].every((file) => reviewedFiles.has(file)),
+  };
+}
+
 export function reviewConclusion(result: ReviewResult): ReviewConclusion {
   if (
     result.findings.length > 0 ||
@@ -54,12 +88,7 @@ export function reviewConclusion(result: ReviewResult): ReviewConclusion {
   ) {
     return 'neutral';
   }
-  const reviewed = new Set(result.coverage.reviewed_files);
-  const complete =
-    result.coverage.complete &&
-    result.coverage.omitted_files.length === 0 &&
-    result.coverage.changed_files.every((file) => reviewed.has(file));
-  return complete ? 'success' : 'neutral';
+  return reviewCoverage(result)?.complete === true ? 'success' : 'neutral';
 }
 
 export function findingFingerprint(finding: ReviewResult['findings'][number]): string {
@@ -112,8 +141,22 @@ const checkStatusMarkers: Record<ReviewResult['tests_run'][number]['status'], st
   not_run: '⚪',
 };
 
-function renderCheckEvidence(value: string): string {
-  return value.replaceAll(/\r?\n/g, '<br>');
+export const findingSeverityMarkers: Record<ReviewResult['findings'][number]['severity'], string> =
+  {
+    critical: '🔴',
+    high: '🟠',
+    medium: '🟡',
+    low: '🔵',
+  };
+
+function renderTableCell(value: string): string {
+  return value.replaceAll('|', '\\|').replaceAll(/\r?\n/g, '<br>');
+}
+
+function renderInlineCode(value: string): string {
+  const longestFence = Math.max(0, ...[...value.matchAll(/`+/g)].map((match) => match[0].length));
+  const fence = '`'.repeat(longestFence + 1);
+  return `${fence}${renderTableCell(value)}${fence}`;
 }
 
 export function renderReview(
@@ -138,7 +181,7 @@ export function renderReview(
       }
       sections.push(
         '',
-        `#### [${finding.severity.toUpperCase()}] ${finding.title}`,
+        `#### ${findingSeverityMarkers[finding.severity]} [${finding.severity.toUpperCase()}] ${finding.title}`,
         '',
         `\`${finding.file}:${finding.line}\` · confidence: ${finding.confidence}`,
         '',
@@ -169,9 +212,11 @@ export function renderReview(
       `<summary>Show ${result.tests_run.length} checks</summary>`,
       '',
     );
+    sections.push('| Status | Check | Evidence |', '| --- | --- | --- |');
     for (const test of result.tests_run) {
+      const status = test.status === 'not_run' ? 'not run' : test.status;
       sections.push(
-        `- ${checkStatusMarkers[test.status]} **${test.status === 'not_run' ? 'not run' : test.status}** \`${test.command}\` — ${renderCheckEvidence(test.evidence)}`,
+        `| ${checkStatusMarkers[test.status]} **${status}** | ${renderInlineCode(test.command)} | ${renderTableCell(test.evidence)} |`,
       );
     }
     sections.push('', '</details>');

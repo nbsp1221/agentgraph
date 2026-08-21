@@ -1,5 +1,5 @@
 import type { ReviewableLines } from './diff-lines.js';
-import type { ReviewResult } from './result.js';
+import { type ReviewResult, findingSeverityMarkers } from './result.js';
 
 export interface ReviewInlineComment {
   body: string;
@@ -37,7 +37,7 @@ export function prepareReviewPublication(
 
 function renderInlineFinding(finding: ReviewResult['findings'][number]): string {
   return [
-    `**[${finding.severity.toUpperCase()}] ${finding.title}**`,
+    `${findingSeverityMarkers[finding.severity]} **[${finding.severity.toUpperCase()}] ${finding.title}**`,
     '',
     finding.explanation,
     '',
