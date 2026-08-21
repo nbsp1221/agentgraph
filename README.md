@@ -103,6 +103,22 @@ Runtime state stays with the checkout in `.agentgraph/`; no root-owned directory
 
 This MVP intentionally has no application-level authentication. Keep the UI, API, and setup flow behind an operator-controlled private network such as Tailscale; anyone who can reach them can read review artifacts and change evaluations. The public GitHub host must expose only the exact webhook endpoint. It must not expose the UI, API, or setup routes.
 
+## Review API
+
+The web UI and external tools use the same versioned review API and evaluation revisions. AgentGraph does not provide a separate agent API or run an approval workflow. An external agent can inspect a completed review, propose judgments to a human, and use the documented evaluation endpoints after the human approves the result.
+
+The private deployment serves three views of the same contract:
+
+- `/openapi.json` for machines and client generation
+- `/docs` for the Scalar interactive reference
+- `/llms.txt` for LLM-friendly Markdown generated from the OpenAPI document
+
+The Scalar browser bundle is version-pinned and served by AgentGraph itself. The documentation UI does not depend on a remote script, external fonts, telemetry, or Scalar registry requests at runtime.
+
+A write client should read `GET /api/v1/reviews/{reviewId}/evaluations`, pass the current revision as `expected_previous_id`, and handle `409 STALE_EVALUATION` by presenting the newer revision for renewed human review. If a response is lost, read the history again instead of blindly repeating the write. Evaluation history is append-only, and withdrawals add a revision rather than deleting prior judgments.
+
+The generated contract documents the complete read and evaluation surface. Review execution, cancellation, retry, authentication, CORS, CLI, and MCP are intentionally outside this API version.
+
 ```caddy
 github-assistant.example.com {
     @github_webhook {
@@ -118,7 +134,7 @@ github-assistant.example.com {
 }
 
 agentgraph.tailnet.example.com {
-    @reviewer path /api/* /healthz /setup/github*
+    @reviewer path /api/* /healthz /setup/github* /openapi.json /docs /docs/* /llms.txt
     handle @reviewer {
         reverse_proxy reviewer:6571
     }

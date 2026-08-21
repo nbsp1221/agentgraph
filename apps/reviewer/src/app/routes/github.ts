@@ -1,4 +1,4 @@
-import type { Hono } from 'hono';
+import type { OpenAPIHono } from '@hono/zod-openapi';
 import type { CredentialStore } from '../../github/credentials.js';
 import type { JobDatabase } from '../../jobs/database.js';
 import type { ServerConfig } from '../config.js';
@@ -55,7 +55,7 @@ function escapeAttribute(value: string): string {
 }
 
 export function registerGitHubRoutes(
-  app: Hono,
+  app: OpenAPIHono,
   config: ServerConfig,
   database: JobDatabase,
   credentials: CredentialStore,
