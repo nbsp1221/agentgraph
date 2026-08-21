@@ -106,6 +106,16 @@ export function removePreviouslyReportedFindings(
   };
 }
 
+const checkStatusMarkers: Record<ReviewResult['tests_run'][number]['status'], string> = {
+  passed: '✓ passed',
+  failed: '× failed',
+  not_run: '– not run',
+};
+
+function escapeTableCell(value: string): string {
+  return value.replaceAll('|', '\\|').replaceAll(/\r?\n/g, '<br>');
+}
+
 export function renderReview(
   result: ReviewResult,
   inlineFindingIndexes: ReadonlySet<number> = new Set(),
@@ -141,13 +151,32 @@ export function renderReview(
     }
   }
 
-  sections.push('', '### Verification');
+  sections.push('', '### Checks');
   if (result.tests_run.length === 0) {
-    sections.push('', 'No tests were run.');
+    sections.push('', 'No checks were run.');
   } else {
+    const counts = result.tests_run.reduce(
+      (total, test) => ({ ...total, [test.status]: total[test.status] + 1 }),
+      { passed: 0, failed: 0, not_run: 0 },
+    );
+    const disclosure = counts.failed > 0 || counts.not_run > 0 ? '<details open>' : '<details>';
+
+    sections.push(
+      '',
+      `${counts.passed} passed · ${counts.failed} failed · ${counts.not_run} not run`,
+      '',
+      disclosure,
+      `<summary>Show ${result.tests_run.length} checks</summary>`,
+      '',
+      '| Status | Check | Evidence |',
+      '| --- | --- | --- |',
+    );
     for (const test of result.tests_run) {
-      sections.push('', `- **${test.status}** \`${test.command}\` — ${test.evidence}`);
+      sections.push(
+        `| ${checkStatusMarkers[test.status]} | \`${escapeTableCell(test.command)}\` | ${escapeTableCell(test.evidence)} |`,
+      );
     }
+    sections.push('', '</details>');
   }
 
   if (result.limitations.length > 0) {
