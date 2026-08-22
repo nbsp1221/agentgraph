@@ -19,7 +19,7 @@ test.describe('review shell fixtures', () => {
         .getByRole('button', { name: '2', exact: true }),
     ).toHaveAttribute('aria-current', 'page');
     await page
-      .getByRole('link', { name: /nbsp1221\/agentgraph/ })
+      .getByRole('link', { name: /nbsp1221\/leverframe/ })
       .first()
       .click();
     await expect(page).toHaveURL(/\/en\/reviews\/\d+/);
@@ -138,7 +138,7 @@ test.describe('review shell fixtures', () => {
     await page.getByRole('dialog').getByRole('link', { name: 'Code Review Bot' }).tap();
     await page.goto('/en/reviews?fixture=evaluation-history');
     await page
-      .getByRole('link', { name: /nbsp1221\/agentgraph/ })
+      .getByRole('link', { name: /nbsp1221\/leverframe/ })
       .first()
       .tap();
     await expect(page).toHaveURL(/\/en\/reviews\/241/);

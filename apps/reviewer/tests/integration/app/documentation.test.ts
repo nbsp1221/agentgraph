@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createAgentGraphServer } from '../../../src/app/server.js';
+import { createLeverframeServer } from '../../../src/app/server.js';
 import { CredentialStore } from '../../../src/github/credentials.js';
 import { JobDatabase } from '../../../src/jobs/database.js';
 
@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 async function fixture(): Promise<string> {
-  const directory = mkdtempSync(join(tmpdir(), 'agentgraph-docs-'));
+  const directory = mkdtempSync(join(tmpdir(), 'leverframe-docs-'));
   const credentials = new CredentialStore(directory);
   credentials.write({
     appId: 1,
@@ -27,7 +27,7 @@ async function fixture(): Promise<string> {
     webhookSecret: 'long-enough-secret',
   });
   const database = new JobDatabase(':memory:');
-  const server = createAgentGraphServer(
+  const server = createLeverframeServer(
     {
       allowedOwnerId: 1,
       credentialsDirectory: directory,
@@ -37,7 +37,7 @@ async function fixture(): Promise<string> {
       githubAppName: 'test',
       model: 'model',
       port: 6571,
-      uiBaseUrl: 'https://agentgraph.tailnet.example.com',
+      uiBaseUrl: 'https://leverframe.retn0.dev',
       webhookUrl: 'https://github.example.com/webhooks/github',
       reasoningEffort: 'low',
       resourcesDirectory: join(directory, 'resources'),
@@ -81,12 +81,12 @@ describe('agent-readable API documentation', () => {
       >;
     };
     expect(document.openapi).toBe('3.1.0');
-    expect(document.info).toMatchObject({ title: 'AgentGraph Review API', version: '1.0.0' });
+    expect(document.info).toMatchObject({ title: 'Leverframe Review API', version: '1.0.0' });
     expect(document.info.description).toContain('human approval');
     expect(document.info.description).toContain('lost response');
     expect(document.info.description).toContain('evaluation history');
     expect(document.servers).toEqual([
-      { url: '/', description: 'Same-origin private AgentGraph deployment' },
+      { url: '/', description: 'Same-origin private Leverframe deployment' },
     ]);
     expect(document.components?.securitySchemes).toBeUndefined();
 
@@ -97,7 +97,7 @@ describe('agent-readable API documentation', () => {
     );
     expect(operationIds).toEqual(
       expect.arrayContaining([
-        'getAgentGraphStatus',
+        'getLeverframeStatus',
         'listReviews',
         'getReview',
         'getReviewEvaluations',
@@ -112,7 +112,7 @@ describe('agent-readable API documentation', () => {
     expect(new Set(operationIds).size).toBe(operationIds.length);
 
     const expectedOperations = [
-      ['get', '/api/v1/status', 'getAgentGraphStatus', ['200']],
+      ['get', '/api/v1/status', 'getLeverframeStatus', ['200']],
       ['get', '/api/v1/reviews', 'listReviews', ['200', '422']],
       ['get', '/api/v1/reviews/{reviewId}', 'getReview', ['200', '404', '422']],
       [
@@ -197,7 +197,7 @@ describe('agent-readable API documentation', () => {
     expect(serialized).toContain('false_positive');
     expect(serialized).toContain('STALE_EVALUATION');
     expect(serialized).not.toMatch(
-      /(?:github-assistant\.retn0\.dev|agentgraph\.retn0\.dev|\/home\/retn0|private[_ -]?key|webhook[_ -]?secret)/i,
+      /(?:leverframe\.retn0\.dev|\/home\/retn0|private[_ -]?key|webhook[_ -]?secret)/i,
     );
   });
 
@@ -208,7 +208,7 @@ describe('agent-readable API documentation', () => {
       expect(response.status).toBe(200);
       expect(response.headers.get('content-type')).toContain('text/html');
       const html = await response.text();
-      expect(html).toContain('AgentGraph Review API');
+      expect(html).toContain('Leverframe Review API');
       expect(html).toContain('<html lang="en">');
       expect(html).toContain('/openapi.json');
       expect(html).not.toMatch(/<script[^>]+src=["']https?:\/\//i);
@@ -235,7 +235,7 @@ describe('agent-readable API documentation', () => {
     expect(firstMarkdown).toContain('false_positive');
     expect(firstMarkdown).toContain('Status: 409');
     expect(firstMarkdown).not.toMatch(
-      /(?:github-assistant\.retn0\.dev|agentgraph\.retn0\.dev|\/home\/retn0|private[_ -]?key|webhook[_ -]?secret)/i,
+      /(?:leverframe\.retn0\.dev|\/home\/retn0|private[_ -]?key|webhook[_ -]?secret)/i,
     );
   });
 });

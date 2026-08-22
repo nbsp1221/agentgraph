@@ -3,7 +3,7 @@ import {
   type StatusResponse,
   reviewListResponseSchema,
   statusResponseSchema,
-} from '@agentgraph/contracts';
+} from '@repo/contracts';
 import { reviewEvaluationValues, reviewStatusValues } from './review-query';
 
 export type ReviewDataError =

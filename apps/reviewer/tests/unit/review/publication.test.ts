@@ -88,9 +88,9 @@ describe('review publication cancellation', () => {
     const client = new GitHubAppClient({
       appId: 1,
       clientId: 'client',
-      name: 'agentgraph',
+      name: 'leverframe',
       privateKey: 'private-key',
-      slug: 'agentgraph',
+      slug: 'leverframe',
       webhookSecret: 'secret',
     });
 

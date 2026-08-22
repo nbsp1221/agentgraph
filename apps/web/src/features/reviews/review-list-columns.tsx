@@ -1,9 +1,9 @@
 'use client';
 
-import type { ReviewListItem } from '@agentgraph/contracts';
+import type { ReviewListItem } from '@repo/contracts';
 import type { tableFeatures } from '@tanstack/react-table';
-import { Badge } from '@agentgraph/ui/components/badge';
-import { Button } from '@agentgraph/ui/components/button';
+import { Badge } from '@repo/ui/components/badge';
+import { Button } from '@repo/ui/components/button';
 import { createColumnHelper } from '@tanstack/react-table';
 import { ExternalLinkIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';

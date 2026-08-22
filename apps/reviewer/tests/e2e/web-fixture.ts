@@ -2,11 +2,11 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createAgentGraphServer } from '../../src/app/server.js';
+import { createLeverframeServer } from '../../src/app/server.js';
 import { CredentialStore } from '../../src/github/credentials.js';
 import { JobDatabase } from '../../src/jobs/database.js';
 
-const root = mkdtempSync(join(tmpdir(), 'agentgraph-e2e-'));
+const root = mkdtempSync(join(tmpdir(), 'leverframe-e2e-'));
 const dataRoot = join(root, 'data');
 const credentialsDirectory = join(dataRoot, 'credentials');
 const credentials = new CredentialStore(credentialsDirectory);
@@ -63,7 +63,7 @@ if (job === undefined) {
 database.updateJob({ id: job.id, state: 'DONE', expectedStates: ['CHECKING_OUT'] });
 database.recordReviewArtifact(job.id, result);
 
-const server = createAgentGraphServer(
+const server = createLeverframeServer(
   {
     allowedOwnerId: 1,
     credentialsDirectory,

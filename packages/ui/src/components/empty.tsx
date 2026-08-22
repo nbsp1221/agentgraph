@@ -1,4 +1,4 @@
-import { cn } from '@agentgraph/ui/lib/utils';
+import { cn } from '@repo/ui/lib/utils';
 import { type VariantProps, cva } from 'class-variance-authority';
 
 function Empty({ className, ...props }: React.ComponentProps<'div'>) {
@@ -69,7 +69,7 @@ function EmptyDescription({ className, ...props }: React.ComponentProps<'p'>) {
     <div
       data-slot="empty-description"
       className={cn(
-        'text-sm/relaxed text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary',
+        'text-sm/relaxed text-muted-foreground [&>a]:text-link [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-link-hover',
         className,
       )}
       {...props}

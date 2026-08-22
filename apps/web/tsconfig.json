@@ -1,5 +1,5 @@
 {
-  "extends": "@agentgraph/typescript-config/nextjs.json",
+  "extends": "@repo/typescript-config/nextjs.json",
   "compilerOptions": { "allowJs": false, "incremental": true },
   "include": [
     "next-env.d.ts",

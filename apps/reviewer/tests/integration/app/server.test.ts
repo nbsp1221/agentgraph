@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ServerConfig } from '../../../src/app/config.js';
-import { createAgentGraphServer } from '../../../src/app/server.js';
+import { createLeverframeServer } from '../../../src/app/server.js';
 import { CredentialStore } from '../../../src/github/credentials.js';
 import { createWebhookSignature } from '../../../src/github/webhook.js';
 import { JobDatabase } from '../../../src/jobs/database.js';
@@ -16,11 +16,11 @@ const config: ServerConfig = {
   databasePath: ':memory:',
   host: '127.0.0.1',
   jobsDirectory: '/unused/jobs',
-  githubAppName: 'test-agentgraph-app',
+  githubAppName: 'test-leverframe-app',
   model: 'gpt-5.6-luna',
   port: 6571,
-  uiBaseUrl: 'https://agentgraph.tailnet.example.com',
-  webhookUrl: 'https://github-assistant.retn0.dev/webhooks/github',
+  uiBaseUrl: 'https://leverframe.retn0.dev',
+  webhookUrl: 'https://leverframe-api.retn0.dev/webhooks/github',
   reasoningEffort: 'low',
   resourcesDirectory: '/unused/resources',
 };
@@ -33,19 +33,19 @@ afterEach(() => {
   }
 });
 
-async function startServer(hooks: Parameters<typeof createAgentGraphServer>[3] = {}) {
-  const temporaryDirectory = mkdtempSync(join(tmpdir(), 'retn0-assistant-test-'));
+async function startServer(hooks: Parameters<typeof createLeverframeServer>[3] = {}) {
+  const temporaryDirectory = mkdtempSync(join(tmpdir(), 'leverframe-test-'));
   const credentials = new CredentialStore(temporaryDirectory);
   credentials.write({
     appId: 42,
     clientId: 'client-id',
-    name: 'retn0-assistant',
+    name: 'leverframe',
     privateKey: 'private-key',
-    slug: 'retn0-assistant',
+    slug: 'leverframe',
     webhookSecret: secret,
   });
   const database = new JobDatabase(':memory:');
-  const server = createAgentGraphServer(config, database, credentials, hooks);
+  const server = createLeverframeServer(config, database, credentials, hooks);
   await new Promise<void>((resolve) => {
     server.listen(0, '127.0.0.1', resolve);
   });
@@ -93,7 +93,7 @@ function commandBody(): Buffer {
   );
 }
 
-describe('AgentGraph server', () => {
+describe('Leverframe server', () => {
   it('reports health', async () => {
     const { url } = await startServer();
     const response = await fetch(`${url}/healthz`);

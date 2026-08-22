@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { run } from '../../../src/cli.js';
 
-describe('AgentGraph CLI', () => {
+describe('Leverframe CLI', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('prints help when no arguments are provided', () => {

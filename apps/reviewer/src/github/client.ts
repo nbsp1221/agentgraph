@@ -1,11 +1,16 @@
 import { App } from '@octokit/app';
 import type { ReviewInlineComment } from '../review/publication.js';
 import type { ReviewResult } from '../review/result.js';
+import {
+  commandReplyMarker,
+  productName,
+  reviewPublicationMarker,
+  statusCommentMarker,
+} from '../identity.js';
 import { renderReview } from '../review/result.js';
 import type { GitHubAppCredentials } from './credentials.js';
 
 const maximumGitHubBodyCharacters = 60_000;
-const statusCommentMarker = '<!-- retn0-assistant:review-status -->';
 
 export interface PullRequestDetails {
   baseRef: string;
@@ -245,7 +250,7 @@ export class GitHubAppClient {
         details_url: `https://github.com/${input.repository}/pull/${input.pullRequestNumber}`,
         external_id: externalId,
         head_sha: input.headSha,
-        name: 'retn0-assistant / code review',
+        name: `${productName} / code review`,
         output: {
           summary: 'Waiting for the review worker to start.',
           title: 'Code review queued',
@@ -322,7 +327,7 @@ export class GitHubAppClient {
     const [owner, repository] = splitRepository(input.repository);
     const octokit = await this.#app.getInstallationOctokit(input.installationId);
     return this.#findIssueComment({
-      marker: statusCommentMarker,
+      marker: statusCommentMarker(),
       octokit,
       owner,
       pullRequestNumber: input.pullRequestNumber,
@@ -746,14 +751,6 @@ function numericHeader(value: unknown): number | undefined {
 function githubErrorStatus(error: unknown): number | undefined {
   const record = asRecord(error);
   return typeof record?.status === 'number' ? record.status : undefined;
-}
-
-function reviewPublicationMarker(jobId: number, headSha: string): string {
-  return `<!-- retn0-assistant:review-publication:${jobId}:${headSha} -->`;
-}
-
-function commandReplyMarker(deliveryId: string): string {
-  return `<!-- retn0-assistant:command-reply:${deliveryId} -->`;
 }
 
 function bodyWithMarker(body: string, marker: string): string {

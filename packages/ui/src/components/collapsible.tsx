@@ -1,7 +1,7 @@
 'use client';
 
-import { cn } from '@agentgraph/ui/lib/utils';
 import { Collapsible as CollapsiblePrimitive } from '@base-ui/react/collapsible';
+import { cn } from '@repo/ui/lib/utils';
 
 function Collapsible({ ...props }: CollapsiblePrimitive.Root.Props) {
   return <CollapsiblePrimitive.Root data-slot="collapsible" {...props} />;

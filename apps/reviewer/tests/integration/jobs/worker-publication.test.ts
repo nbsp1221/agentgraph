@@ -33,7 +33,7 @@ afterEach(() => {
 
 describe('ReviewWorker publication cancellation', () => {
   it('does not publish or reach DONE when cancellation occurs after verification', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'agentgraph-worker-publication-'));
+    const directory = mkdtempSync(join(tmpdir(), 'leverframe-worker-publication-'));
     temporaryDirectories.push(directory);
     const headSha = 'a'.repeat(40);
     const baseSha = 'b'.repeat(40);
@@ -144,9 +144,9 @@ describe('ReviewWorker publication cancellation', () => {
       read: (): GitHubAppCredentials => ({
         appId: 1,
         clientId: 'client',
-        name: 'agentgraph',
+        name: 'leverframe',
         privateKey: 'private-key',
-        slug: 'agentgraph',
+        slug: 'leverframe',
         webhookSecret: 'secret',
       }),
     } as unknown as CredentialStore;

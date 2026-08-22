@@ -1,6 +1,6 @@
 .git
 .gitignore
-.agentgraph
+.leverframe
 .internal
 coverage
 dist

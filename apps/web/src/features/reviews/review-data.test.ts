@@ -4,12 +4,12 @@ import { toReviewerQuery } from './review-data';
 describe('review API query mapping', () => {
   it('maps public URL taxonomy to the reviewer API taxonomy', () => {
     const query = toReviewerQuery(
-      new URLSearchParams('query=agentgraph&page=3&status=completed&evaluation=needs_evaluation'),
+      new URLSearchParams('query=leverframe&page=3&status=completed&evaluation=needs_evaluation'),
     );
     expect(query.get('page')).toBe('3');
     expect(query.get('status')).toBe('completed');
     expect(query.get('evaluation')).toBe('needs_evaluation');
-    expect(query.get('query')).toBe('agentgraph');
+    expect(query.get('query')).toBe('leverframe');
   });
 
   it('canonicalizes default filters and always requests the contract page size', () => {

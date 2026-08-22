@@ -1,14 +1,14 @@
+import { reviewerSandboxPattern } from '../identity.js';
 import { runProcess } from '../system/process.js';
-
-const reviewSandboxPattern = /^retn0-assistant-job-(\d+)$/;
 
 export function orphanReviewSandboxes(
   sandboxNames: readonly string[],
   activeJobIds: ReadonlySet<number>,
 ): string[] {
+  const reviewSandboxPattern = reviewerSandboxPattern();
   return sandboxNames.filter((name) => {
     const match = reviewSandboxPattern.exec(name);
-    return match !== null && !activeJobIds.has(Number(match[1]));
+    return match !== undefined && match !== null && !activeJobIds.has(Number(match[1]));
   });
 }
 

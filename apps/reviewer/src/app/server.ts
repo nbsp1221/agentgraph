@@ -101,12 +101,12 @@ function createApi(
   const openApiDocument = app.getOpenAPI31Document({
     openapi: '3.1.0',
     info: {
-      title: 'AgentGraph Review API',
+      title: 'Leverframe Review API',
       version: '1.0.0',
       description:
-        'Private review observation and evaluation API shared by AgentGraph web and external tools on the same trusted network. External agents must obtain human approval before evaluation writes; AgentGraph does not run or verify that approval workflow. Before writing, read the current evaluation revision and send its ID as expected_previous_id. After a lost response, read evaluation history to discover whether the write succeeded instead of blindly retrying it.',
+        'Private review observation and evaluation API shared by Leverframe web and external tools on the same trusted network. External agents must obtain human approval before evaluation writes; Leverframe does not run or verify that approval workflow. Before writing, read the current evaluation revision and send its ID as expected_previous_id. After a lost response, read evaluation history to discover whether the write succeeded instead of blindly retrying it.',
     },
-    servers: [{ url: '/', description: 'Same-origin private AgentGraph deployment' }],
+    servers: [{ url: '/', description: 'Same-origin private Leverframe deployment' }],
   });
   let llmsDocument: Promise<string> | undefined;
 
@@ -126,7 +126,7 @@ function createApi(
     agent: { disabled: true },
     cdn: scalarBrowserPath,
     hideClientButton: true,
-    pageTitle: 'AgentGraph Review API',
+    pageTitle: 'Leverframe Review API',
     showDeveloperTools: 'never',
     telemetry: false,
     url: '/openapi.json',
@@ -160,7 +160,7 @@ function createApi(
   return app;
 }
 
-export function createAgentGraphServer(
+export function createLeverframeServer(
   config: ServerConfig,
   database: JobDatabase,
   credentials: CredentialStore,

@@ -1,23 +1,23 @@
 'use client';
 
-import type { ReviewListResponse } from '@agentgraph/contracts';
-import { Alert, AlertDescription, AlertTitle } from '@agentgraph/ui/components/alert';
-import { Button } from '@agentgraph/ui/components/button';
+import type { ReviewListResponse } from '@repo/contracts';
+import { Alert, AlertDescription, AlertTitle } from '@repo/ui/components/alert';
+import { Button } from '@repo/ui/components/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@agentgraph/ui/components/card';
+} from '@repo/ui/components/card';
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@agentgraph/ui/components/empty';
-import { Input } from '@agentgraph/ui/components/input';
+} from '@repo/ui/components/empty';
+import { Input } from '@repo/ui/components/input';
 import {
   Pagination,
   PaginationContent,
@@ -26,14 +26,14 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from '@agentgraph/ui/components/pagination';
+} from '@repo/ui/components/pagination';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@agentgraph/ui/components/select';
+} from '@repo/ui/components/select';
 import {
   Table,
   TableBody,
@@ -41,7 +41,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@agentgraph/ui/components/table';
+} from '@repo/ui/components/table';
 import { flexRender, tableFeatures, useTable } from '@tanstack/react-table';
 import { AlertCircleIcon, SearchIcon } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';

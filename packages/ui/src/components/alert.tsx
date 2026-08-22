@@ -1,4 +1,4 @@
-import { cn } from '@agentgraph/ui/lib/utils';
+import { cn } from '@repo/ui/lib/utils';
 import { type VariantProps, cva } from 'class-variance-authority';
 import * as React from 'react';
 

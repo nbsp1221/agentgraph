@@ -1,5 +1,5 @@
-import { Alert, AlertDescription, AlertTitle } from '@agentgraph/ui/components/alert';
-import { Button } from '@agentgraph/ui/components/button';
+import { Alert, AlertDescription, AlertTitle } from '@repo/ui/components/alert';
+import { Button } from '@repo/ui/components/button';
 import { AlertCircleIcon } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { Link } from '../../i18n/navigation';

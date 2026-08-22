@@ -1,4 +1,4 @@
-import { Skeleton } from '@agentgraph/ui/components/skeleton';
+import { Skeleton } from '@repo/ui/components/skeleton';
 
 export default function ReviewDetailLoading() {
   return (

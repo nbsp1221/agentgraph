@@ -1,10 +1,10 @@
 'use client';
 
-import { contextResponseSchema } from '@agentgraph/contracts';
-import { Alert, AlertDescription, AlertTitle } from '@agentgraph/ui/components/alert';
-import { Badge } from '@agentgraph/ui/components/badge';
-import { Button } from '@agentgraph/ui/components/button';
-import { Skeleton } from '@agentgraph/ui/components/skeleton';
+import { contextResponseSchema } from '@repo/contracts';
+import { Alert, AlertDescription, AlertTitle } from '@repo/ui/components/alert';
+import { Badge } from '@repo/ui/components/badge';
+import { Button } from '@repo/ui/components/button';
+import { Skeleton } from '@repo/ui/components/skeleton';
 import { useTranslations } from 'next-intl';
 import { createContext, use, useState } from 'react';
 

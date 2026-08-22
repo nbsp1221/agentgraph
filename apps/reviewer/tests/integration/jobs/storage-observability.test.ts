@@ -108,7 +108,7 @@ describe('review observability storage', () => {
   });
 
   it('migrates a legacy database idempotently and rolls back incompatible baseline detection', () => {
-    const root = mkdtempSync('/tmp/agentgraph-migration-');
+    const root = mkdtempSync('/tmp/leverframe-migration-');
     try {
       const path = join(root, 'legacy.sqlite');
       const initial = new JobDatabase(path, { dataRoot: root });
@@ -155,7 +155,7 @@ describe('review observability storage', () => {
   });
 
   it('backfills a valid result, is idempotent, and refuses paths outside data root', () => {
-    const root = mkdtempSync('/tmp/agentgraph-observability-');
+    const root = mkdtempSync('/tmp/leverframe-observability-');
     try {
       const jobs = join(root, 'jobs');
       mkdirSync(jobs);
@@ -254,7 +254,7 @@ describe('review observability storage', () => {
   });
 
   it('detects tampered artifact JSON and validates runtime input before storing', () => {
-    const root = mkdtempSync('/tmp/agentgraph-artifact-hash-');
+    const root = mkdtempSync('/tmp/leverframe-artifact-hash-');
     try {
       const path = join(root, 'state.sqlite');
       const database = new JobDatabase(path, { dataRoot: root });
@@ -291,7 +291,7 @@ describe('review observability storage', () => {
   });
 
   it('does not combine an unavailable newest head with older available history', () => {
-    const root = mkdtempSync('/tmp/agentgraph-history-transition-');
+    const root = mkdtempSync('/tmp/leverframe-history-transition-');
     try {
       const validPath = join(root, 'valid.json');
       writeFileSync(validPath, JSON.stringify(result));

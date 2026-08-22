@@ -1,5 +1,6 @@
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { reviewProtocol, reviewerSandboxName } from '../identity.js';
 import { type ReviewableLines, parseReviewableLines } from '../review/diff-lines.js';
 import {
   type ReviewResult,
@@ -15,8 +16,6 @@ interface SandboxReview {
   reviewMode: 'full' | 'incremental';
   reviewableLines: ReviewableLines;
 }
-
-const sandboxWorkspace = '/tmp/retn0-assistant-repository';
 
 export class SandboxReviewer {
   constructor(
@@ -50,8 +49,8 @@ export class SandboxReviewer {
       schema: string;
     }) => void;
   }): Promise<SandboxReview> {
-    const sandboxName = `retn0-assistant-job-${input.jobId}`;
-    const sandboxOutputPath = '/tmp/retn0-assistant-review.json';
+    const sandboxName = reviewerSandboxName(input.jobId);
+    const sandboxOutputPath = reviewProtocol.sandboxOutputPath;
     const sandboxAnchor = join(input.jobDirectory, 'sandbox-anchor');
     const stagedResourcesDirectory = join(input.jobDirectory, 'review-resources');
     const schemaPath = join(stagedResourcesDirectory, 'review-schema.json');
@@ -183,7 +182,7 @@ export class SandboxReviewer {
           'exec',
           '-i',
           '-w',
-          sandboxWorkspace,
+          reviewProtocol.sandboxWorkspace,
           sandboxName,
           'codex',
           'exec',
@@ -249,7 +248,7 @@ export async function checkoutPullRequestInSandbox(input: {
       '-ceu',
       'mkdir -p "$1" && git -C "$1" init --initial-branch=review && git -C "$1" remote add origin "$2"',
       'sh',
-      sandboxWorkspace,
+      reviewProtocol.sandboxWorkspace,
       input.cloneUrl,
     ],
     { signal: input.signal },
@@ -264,7 +263,7 @@ export async function checkoutPullRequestInSandbox(input: {
       '-ceu',
       'IFS= read -r token; authorization=$(printf "x-access-token:%s" "$token" | base64 | tr -d "\\n"); export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraheader GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $authorization"; git -C "$1" fetch --no-tags "$2" "$3" "$4"; git -C "$1" checkout --detach refs/review/head',
       'sh',
-      sandboxWorkspace,
+      reviewProtocol.sandboxWorkspace,
       'origin',
       `+${input.baseSha}:refs/review/base`,
       `+refs/pull/${input.pullRequestNumber}/head:refs/review/head`,
@@ -285,7 +284,11 @@ async function isAncestorInSandbox(
 }
 
 function runSandboxGit(sandboxName: string, arguments_: readonly string[], signal: AbortSignal) {
-  return runProcess('sbx', ['exec', '-w', sandboxWorkspace, sandboxName, 'git', ...arguments_], {
-    signal,
-  });
+  return runProcess(
+    'sbx',
+    ['exec', '-w', reviewProtocol.sandboxWorkspace, sandboxName, 'git', ...arguments_],
+    {
+      signal,
+    },
+  );
 }

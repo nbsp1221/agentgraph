@@ -14,15 +14,15 @@ afterEach(() => {
 
 describe('CredentialStore', () => {
   it('stores GitHub App credentials in separate private files', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'retn0-assistant-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'leverframe-test-'));
     temporaryDirectories.push(directory);
     const store = new CredentialStore(directory);
     const credentials = {
       appId: 42,
       clientId: 'client-id',
-      name: 'retn0-assistant',
+      name: 'leverframe',
       privateKey: 'private-key',
-      slug: 'retn0-assistant',
+      slug: 'leverframe',
       webhookSecret: 'webhook-secret-long-enough',
     };
 

@@ -3,7 +3,7 @@ import {
   type ReviewDetail,
   evaluationsResponseSchema,
   reviewDetailSchema,
-} from '@agentgraph/contracts';
+} from '@repo/contracts';
 
 export type ReviewDetailDataResult =
   | { kind: 'ok'; data: ReviewDetail }

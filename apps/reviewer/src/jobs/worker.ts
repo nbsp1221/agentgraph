@@ -4,6 +4,7 @@ import type { CredentialStore } from '../github/credentials.js';
 import type { ReviewableLines } from '../review/diff-lines.js';
 import type { SandboxReviewer } from '../sandbox/reviewer.js';
 import { GitHubAppClient } from '../github/client.js';
+import { reviewProtocol } from '../identity.js';
 import { selectReviewContext } from '../review/history.js';
 import { prepareReviewPublication } from '../review/publication.js';
 import { parseRepositoryPolicy } from '../review/repository-policy.js';
@@ -614,7 +615,7 @@ export class ReviewWorker {
   }): Promise<readonly string[] | undefined> {
     const source = await input.github.getRepositoryTextFile({
       installationId: input.job.installationId,
-      path: '.github/retn0-assistant.yml',
+      path: reviewProtocol.repositoryPolicyPath,
       ref: input.defaultBranch,
       repository: input.job.repository,
     });

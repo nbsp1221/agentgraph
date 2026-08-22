@@ -4,16 +4,14 @@ import { createGitHubManifestRegistration } from '../../../src/github/manifest.j
 describe('GitHub App manifest registration', () => {
   it('keeps the private UI URL separate from the public webhook URL', () => {
     const registration = createGitHubManifestRegistration(
-      'https://agentgraph.tailnet.example.com/',
+      'https://leverframe.retn0.dev/',
       'https://github.example.com/webhooks/github',
-      'agentgraph-app',
+      'leverframe-app',
     );
     const manifest = JSON.parse(registration.manifest) as Record<string, unknown>;
 
-    expect(manifest.url).toBe('https://agentgraph.tailnet.example.com');
-    expect(manifest.redirect_url).toBe(
-      'https://agentgraph.tailnet.example.com/setup/github/callback',
-    );
+    expect(manifest.url).toBe('https://leverframe.retn0.dev');
+    expect(manifest.redirect_url).toBe('https://leverframe.retn0.dev/setup/github/callback');
     expect((manifest.hook_attributes as { url: string }).url).toBe(
       'https://github.example.com/webhooks/github',
     );

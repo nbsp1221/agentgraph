@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import type { ZodType } from 'zod';
+import { type OpenAPIHono, createRoute } from '@hono/zod-openapi';
 import {
   type DeleteEvaluationRequest,
   type FindingEvaluationWriteRequest,
@@ -17,8 +18,7 @@ import {
   reviewListQuerySchema,
   reviewListResponseSchema,
   statusResponseSchema,
-} from '@agentgraph/contracts';
-import { type OpenAPIHono, createRoute } from '@hono/zod-openapi';
+} from '@repo/contracts';
 import type { JobDatabase } from '../../jobs/database.js';
 import { findingFingerprint } from '../../review/result.js';
 import {
@@ -67,9 +67,9 @@ const conflictResponse = jsonResponse(
 const statusRoute = createRoute({
   method: 'get',
   path: '/api/v1/status',
-  operationId: 'getAgentGraphStatus',
+  operationId: 'getLeverframeStatus',
   tags: ['Service'],
-  summary: 'Get AgentGraph dependency status',
+  summary: 'Get Leverframe dependency status',
   description:
     'Returns the last observed API, database, worker, sandbox, and GitHub status without probing external dependencies for every request.',
   responses: {
@@ -134,7 +134,7 @@ const setReviewEvaluationRoute = createRoute({
   tags: ['Evaluations'],
   summary: 'Set the overall review evaluation',
   description:
-    'Record a human-approved overall judgment. AgentGraph does not run or verify the approval workflow. On 409, present the current revision for renewed human review instead of silently overwriting it.',
+    'Record a human-approved overall judgment. Leverframe does not run or verify the approval workflow. On 409, present the current revision for renewed human review instead of silently overwriting it.',
   request: {
     params: reviewIdParamsSchema,
     body: {
@@ -200,7 +200,7 @@ const setFindingEvaluationRoute = createRoute({
   tags: ['Evaluations'],
   summary: 'Set a finding evaluation',
   description:
-    'Record a human-approved finding judgment and evidence-based rationale. AgentGraph does not run or verify the approval workflow.',
+    'Record a human-approved finding judgment and evidence-based rationale. Leverframe does not run or verify the approval workflow.',
   request: {
     params: findingParamsSchema,
     body: {

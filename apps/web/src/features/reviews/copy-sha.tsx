@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@agentgraph/ui/components/button';
+import { Button } from '@repo/ui/components/button';
 import { CheckIcon, CopyIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';

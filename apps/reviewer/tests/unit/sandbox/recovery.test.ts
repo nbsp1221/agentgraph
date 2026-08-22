@@ -7,13 +7,13 @@ describe('orphan sandbox recovery', () => {
       orphanReviewSandboxes(
         [
           'codex-alphalab',
-          'retn0-assistant-job-12',
-          'retn0-assistant-job-13',
-          'retn0-assistant-job-not-a-number',
+          'leverframe-job-12',
+          'leverframe-job-13',
+          'leverframe-job-not-a-number',
           'other-job-14',
         ],
         new Set([13]),
       ),
-    ).toEqual(['retn0-assistant-job-12']);
+    ).toEqual(['leverframe-job-12']);
   });
 });

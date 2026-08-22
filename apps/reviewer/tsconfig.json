@@ -1,5 +1,5 @@
 {
-  "extends": "@agentgraph/typescript-config/node.json",
+  "extends": "@repo/typescript-config/node.json",
   "compilerOptions": {
     "types": ["node", "vitest/globals"]
   },
