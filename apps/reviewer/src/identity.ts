@@ -7,6 +7,7 @@ export const productName = 'Leverframe';
 export const productSlug = 'leverframe';
 export const productUserAgent = productSlug;
 export const defaultDataDirectoryName = '.leverframe';
+export const legacyDataDirectoryName = '.agentgraph';
 
 /**
  * Stable identifiers used across GitHub, repository configuration, and the
@@ -25,8 +26,9 @@ export const reviewProtocol = {
 export const repositoryPolicyPaths = [
   reviewProtocol.repositoryPolicyPath,
   '.github/leverframe.yml',
+  '.github/retn0-assistant.yml',
 ] as const;
-export const legacySandboxNamePrefixes = ['leverframe-job-'] as const;
+export const legacySandboxNamePrefixes = ['leverframe-job-', 'retn0-assistant-job-'] as const;
 
 const legacyProtocolNamespaces = ['leverframe', 'retn0-assistant'] as const;
 

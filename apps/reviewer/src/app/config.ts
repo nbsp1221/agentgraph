@@ -1,7 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { defaultDataDirectoryName } from '../identity.js';
+import { defaultDataDirectoryName, legacyDataDirectoryName } from '../identity.js';
 
 const uiBaseUrlSchema = z.string().superRefine((value, context) => {
   let parsed: URL;
@@ -64,6 +64,21 @@ const serverConfigSchema = z.object({
 
 export type ServerConfig = z.infer<typeof serverConfigSchema>;
 
+export function resolveDataDirectory(
+  environment: NodeJS.ProcessEnv,
+  rootDirectory = process.cwd(),
+): string {
+  if (environment.APP_DATA_DIRECTORY !== undefined) {
+    return environment.APP_DATA_DIRECTORY;
+  }
+
+  const currentDirectory = join(rootDirectory, defaultDataDirectoryName);
+  const legacyDirectory = join(rootDirectory, legacyDataDirectoryName);
+  return !existsSync(currentDirectory) && existsSync(legacyDirectory)
+    ? legacyDirectory
+    : currentDirectory;
+}
+
 function validateReviewResources(resourcesDirectory: string): void {
   const promptPath = join(resourcesDirectory, 'review-prompt.md');
   let prompt: string;
@@ -94,8 +109,7 @@ function validateReviewResources(resourcesDirectory: string): void {
 }
 
 export function loadServerConfig(environment: NodeJS.ProcessEnv = process.env): ServerConfig {
-  const dataDirectory =
-    environment.APP_DATA_DIRECTORY ?? join(process.cwd(), defaultDataDirectoryName);
+  const dataDirectory = resolveDataDirectory(environment);
   const port = Number(environment.APP_PORT ?? '6571');
   const resourcesDirectory =
     environment.APP_RESOURCES_DIRECTORY ?? join(process.cwd(), 'resources');
