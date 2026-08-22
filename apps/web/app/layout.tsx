@@ -4,7 +4,7 @@ import { getLocale } from 'next-intl/server';
 import { ThemeProvider } from '../src/components/theme-provider';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://leverframe.retn0.dev'),
+  metadataBase: new URL('https://leverframe-ui.retn0.dev'),
   title: {
     default: 'Leverframe',
     template: '%s · Leverframe',
