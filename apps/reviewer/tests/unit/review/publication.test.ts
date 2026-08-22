@@ -60,7 +60,7 @@ describe('review publication preparation', () => {
     expect(publication.inlineComments).toEqual([
       expect.objectContaining({ line: 7, path: 'src/changed.ts' }),
     ]);
-    expect(publication.inlineComments[0]?.body).toContain('[HIGH] Return contract changed');
+    expect(publication.inlineComments[0]?.body).toContain('🟠 **[HIGH] Return contract changed**');
   });
 });
 

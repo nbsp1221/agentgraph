@@ -5,6 +5,7 @@ import {
   removePreviouslyReportedFindings,
   renderReview,
   reviewConclusion,
+  reviewCoverage,
 } from '../../../src/review/result.js';
 
 const previousFinding: ReviewResult['findings'][number] = {
@@ -83,7 +84,7 @@ describe('incremental review findings', () => {
     const body = renderReview(previous, new Set([0]));
 
     expect(body).toContain('1 finding was published inline');
-    expect(body).not.toContain('#### [HIGH] Authorization comparison is inverted');
+    expect(body).not.toContain('#### 🔴 [HIGH] Authorization comparison is inverted');
     expect(body).not.toContain('gpt-5.6-luna');
   });
 
@@ -131,5 +132,113 @@ describe('incremental review findings', () => {
         ],
       }),
     ).toBe('neutral');
+  });
+
+  it('keeps changed-file coverage paths case-sensitive', () => {
+    const result: ReviewResult = {
+      ...previous,
+      findings: [],
+      coverage: {
+        changed_files: ['Foo.ts', 'foo.ts'],
+        complete: true,
+        omitted_files: ['foo.ts'],
+        reviewed_files: ['Foo.ts'],
+      },
+    };
+
+    expect(reviewCoverage(result)).toEqual({
+      changed: 2,
+      omitted: 1,
+      reviewed: 1,
+      complete: false,
+    });
+    expect(reviewConclusion(result)).toBe('neutral');
+  });
+});
+
+describe('review markdown checks', () => {
+  const checks: ReviewResult['tests_run'] = [
+    {
+      command: 'pnpm contracts test',
+      evidence: '4 tests passed.',
+      status: 'passed',
+    },
+    {
+      command: 'pnpm reviewer test',
+      evidence: '90 tests passed.',
+      status: 'passed',
+    },
+    {
+      command: 'pnpm web test',
+      evidence: '13 tests passed.',
+      status: 'passed',
+    },
+  ];
+
+  it('renders aggregate counts and one three-column table row per passed check', () => {
+    const body = renderReview({ ...previous, tests_run: checks });
+
+    expect(body).toContain('### Checks');
+    expect(body).toContain('**3 passed · 0 failed · 0 not run**');
+    expect(body).toContain('<details>');
+    expect(body).not.toContain('<details open>');
+    expect(body).toContain('<summary>Show 3 checks</summary>');
+    expect(body).toContain('| Status | Check | Evidence |');
+    expect(body.match(/^\| 🟢 \*\*passed\*\* \| `pnpm .*` \|/gm)).toHaveLength(3);
+    expect(body).not.toContain('### Verification');
+  });
+
+  it('opens the disclosure when a check failed or was not run', () => {
+    const body = renderReview({
+      ...previous,
+      tests_run: [
+        ...checks,
+        { command: 'pnpm deploy', evidence: 'Command failed.', status: 'failed' },
+        { command: 'pnpm e2e', evidence: 'Skipped by CI.', status: 'not_run' },
+      ],
+    });
+
+    expect(body).toContain('**3 passed · 1 failed · 1 not run**');
+    expect(body).toContain('<details open>');
+    expect(body).toContain('| 🔴 **failed** | `pnpm deploy` | Command failed. |');
+    expect(body).toContain('| ⚪ **not run** | `pnpm e2e` | Skipped by CI. |');
+  });
+
+  it('renders an explicit empty state without an empty disclosure', () => {
+    const body = renderReview({ ...previous, tests_run: [] });
+
+    expect(body).toContain('### Checks\n\nNo checks were run.');
+    expect(body).not.toContain('<details>');
+  });
+
+  it('preserves multiline check evidence while preserving findings and limitations', () => {
+    const body = renderReview({
+      ...previous,
+      findings: [],
+      limitations: ['The sandbox was unavailable.'],
+      summary: 'No actionable defects.',
+      tests_run: [
+        {
+          command: 'pnpm test | tee result.log',
+          evidence: 'Output line one\nOutput | line two.',
+          status: 'passed',
+        },
+      ],
+    });
+
+    expect(body).toContain(
+      '| 🟢 **passed** | `pnpm test \\| tee result.log` | Output line one<br>Output \\| line two. |',
+    );
+    expect(body).toContain('### Findings\n\nNo actionable defects found.');
+    expect(body).toContain('### Limitations\n\n- The sandbox was unavailable.');
+  });
+
+  it('keeps check commands ending in backticks inside a valid code span', () => {
+    const body = renderReview({
+      ...previous,
+      tests_run: [{ command: 'echo `date`', evidence: 'Command passed.', status: 'passed' }],
+    });
+
+    expect(body).toContain('| 🟢 **passed** | `` echo `date` `` | Command passed. |');
   });
 });
