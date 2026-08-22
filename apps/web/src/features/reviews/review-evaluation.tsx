@@ -1,18 +1,18 @@
 'use client';
 
-import { type ReviewEvaluation, evaluationWriteResponseSchema } from '@agentgraph/contracts';
-import { Alert, AlertDescription, AlertTitle } from '@agentgraph/ui/components/alert';
-import { Badge } from '@agentgraph/ui/components/badge';
-import { Button } from '@agentgraph/ui/components/button';
+import { type ReviewEvaluation, evaluationWriteResponseSchema } from '@leverframe/contracts';
+import { Alert, AlertDescription, AlertTitle } from '@leverframe/ui/components/alert';
+import { Badge } from '@leverframe/ui/components/badge';
+import { Button } from '@leverframe/ui/components/button';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@agentgraph/ui/components/collapsible';
-import { Separator } from '@agentgraph/ui/components/separator';
-import { Spinner } from '@agentgraph/ui/components/spinner';
-import { Textarea } from '@agentgraph/ui/components/textarea';
-import { ToggleGroup, ToggleGroupItem } from '@agentgraph/ui/components/toggle-group';
+} from '@leverframe/ui/components/collapsible';
+import { Separator } from '@leverframe/ui/components/separator';
+import { Spinner } from '@leverframe/ui/components/spinner';
+import { Textarea } from '@leverframe/ui/components/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@leverframe/ui/components/toggle-group';
 import { ChevronDownIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';

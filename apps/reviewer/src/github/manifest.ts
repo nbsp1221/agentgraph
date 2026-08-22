@@ -33,7 +33,7 @@ export function createGitHubManifestRegistration(
       metadata: 'read',
       pull_requests: 'write',
     },
-    description: 'Personal GitHub assistant for automated issue and pull request workflows',
+    description: 'A local-first control plane for running AI work loops to verified completion',
     hook_attributes: {
       active: true,
       url: webhookUrl,
@@ -53,7 +53,7 @@ export async function convertGitHubManifestCode(code: string): Promise<GitHubApp
     {
       headers: {
         'accept': 'application/vnd.github+json',
-        'user-agent': 'agentgraph',
+        'user-agent': 'leverframe',
         'x-github-api-version': '2022-11-28',
       },
       method: 'POST',

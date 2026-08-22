@@ -1,20 +1,20 @@
-import type { EvaluationsResponse, ReviewDetail } from '@agentgraph/contracts';
-import { Alert, AlertDescription, AlertTitle } from '@agentgraph/ui/components/alert';
-import { Badge } from '@agentgraph/ui/components/badge';
-import { Button } from '@agentgraph/ui/components/button';
+import type { EvaluationsResponse, ReviewDetail } from '@leverframe/contracts';
+import { Alert, AlertDescription, AlertTitle } from '@leverframe/ui/components/alert';
+import { Badge } from '@leverframe/ui/components/badge';
+import { Button } from '@leverframe/ui/components/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@agentgraph/ui/components/card';
+} from '@leverframe/ui/components/card';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@agentgraph/ui/components/collapsible';
-import { Separator } from '@agentgraph/ui/components/separator';
+} from '@leverframe/ui/components/collapsible';
+import { Separator } from '@leverframe/ui/components/separator';
 import { ArrowLeftIcon, ChevronDownIcon, ExternalLinkIcon } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { Link } from '../../i18n/navigation';

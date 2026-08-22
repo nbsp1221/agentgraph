@@ -18,7 +18,7 @@ afterEach(() => {
 
 describe('SandboxReviewer', () => {
   it('stages review resources under the host-visible job directory', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'agentgraph-reviewer-'));
+    const root = mkdtempSync(join(tmpdir(), 'leverframe-reviewer-'));
     temporaryDirectories.push(root);
     const resourcesDirectory = join(root, 'image-resources');
     const jobDirectory = join(root, 'shared', 'jobs', '42');

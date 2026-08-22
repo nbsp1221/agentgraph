@@ -164,7 +164,7 @@ export function renderReview(
   result: ReviewResult,
   inlineFindingIndexes: ReadonlySet<number> = new Set(),
 ): string {
-  const sections = ['## retn0-assistant review', '', result.summary];
+  const sections = ['## leverframe review', '', result.summary];
 
   sections.push('', '### Findings');
   if (result.findings.length === 0) {

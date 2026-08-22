@@ -1,7 +1,7 @@
 'use client';
 
-import { cn } from '@agentgraph/ui/lib/utils';
 import { Toggle as TogglePrimitive } from '@base-ui/react/toggle';
+import { cn } from '@leverframe/ui/lib/utils';
 import { type VariantProps, cva } from 'class-variance-authority';
 
 const toggleVariants = cva(

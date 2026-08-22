@@ -14,8 +14,8 @@
     "components": "@/components",
     "hooks": "@/hooks",
     "lib": "@/lib",
-    "utils": "@agentgraph/ui/lib/utils",
-    "ui": "@agentgraph/ui/components"
+    "utils": "@leverframe/ui/lib/utils",
+    "ui": "@leverframe/ui/components"
   },
   "rtl": false,
   "menuColor": "default",

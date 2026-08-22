@@ -1,12 +1,12 @@
 {
-  "name": "@agentgraph/reviewer",
+  "name": "@leverframe/reviewer",
   "version": "0.0.0",
   "private": true,
-  "description": "AgentGraph code review bot and GitHub integration",
+  "description": "Leverframe code review bot and GitHub integration",
   "license": "MIT",
   "author": "nbsp1221",
   "bin": {
-    "agentgraph": "dist/cli.js"
+    "leverframe": "dist/cli.js"
   },
   "type": "module",
   "scripts": {
@@ -21,9 +21,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@agentgraph/contracts": "workspace:*",
     "@hono/node-server": "2.1.1",
     "@hono/zod-openapi": "1.6.1",
+    "@leverframe/contracts": "workspace:*",
     "@octokit/app": "16.1.4",
     "@scalar/hono-api-reference": "0.11.14",
     "cac": "7.0.0",
@@ -33,7 +33,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@agentgraph/typescript-config": "workspace:*",
+    "@leverframe/typescript-config": "workspace:*",
     "@scalar/api-reference": "1.65.1",
     "@scalar/openapi-to-markdown": "0.5.40"
   },

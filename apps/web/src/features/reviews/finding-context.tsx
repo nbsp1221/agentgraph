@@ -1,10 +1,10 @@
 'use client';
 
-import { contextResponseSchema } from '@agentgraph/contracts';
-import { Alert, AlertDescription, AlertTitle } from '@agentgraph/ui/components/alert';
-import { Badge } from '@agentgraph/ui/components/badge';
-import { Button } from '@agentgraph/ui/components/button';
-import { Skeleton } from '@agentgraph/ui/components/skeleton';
+import { contextResponseSchema } from '@leverframe/contracts';
+import { Alert, AlertDescription, AlertTitle } from '@leverframe/ui/components/alert';
+import { Badge } from '@leverframe/ui/components/badge';
+import { Button } from '@leverframe/ui/components/button';
+import { Skeleton } from '@leverframe/ui/components/skeleton';
 import { useTranslations } from 'next-intl';
 import { createContext, use, useState } from 'react';
 

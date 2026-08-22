@@ -5,7 +5,7 @@ import { renderReview } from '../review/result.js';
 import type { GitHubAppCredentials } from './credentials.js';
 
 const maximumGitHubBodyCharacters = 60_000;
-const statusCommentMarker = '<!-- retn0-assistant:review-status -->';
+const statusCommentMarker = '<!-- leverframe:review-status -->';
 
 export interface PullRequestDetails {
   baseRef: string;
@@ -245,7 +245,7 @@ export class GitHubAppClient {
         details_url: `https://github.com/${input.repository}/pull/${input.pullRequestNumber}`,
         external_id: externalId,
         head_sha: input.headSha,
-        name: 'retn0-assistant / code review',
+        name: 'leverframe / code review',
         output: {
           summary: 'Waiting for the review worker to start.',
           title: 'Code review queued',
@@ -749,11 +749,11 @@ function githubErrorStatus(error: unknown): number | undefined {
 }
 
 function reviewPublicationMarker(jobId: number, headSha: string): string {
-  return `<!-- retn0-assistant:review-publication:${jobId}:${headSha} -->`;
+  return `<!-- leverframe:review-publication:${jobId}:${headSha} -->`;
 }
 
 function commandReplyMarker(deliveryId: string): string {
-  return `<!-- retn0-assistant:command-reply:${deliveryId} -->`;
+  return `<!-- leverframe:command-reply:${deliveryId} -->`;
 }
 
 function bodyWithMarker(body: string, marker: string): string {

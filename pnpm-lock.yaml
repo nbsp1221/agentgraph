@@ -57,15 +57,15 @@ importers:
 
   apps/reviewer:
     dependencies:
-      '@agentgraph/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
       '@hono/node-server':
         specifier: 2.1.1
         version: 2.1.1(hono@4.13.3)
       '@hono/zod-openapi':
         specifier: 1.6.1
         version: 1.6.1(hono@4.13.3)(zod@4.4.3)
+      '@leverframe/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@octokit/app':
         specifier: 16.1.4
         version: 16.1.4
@@ -88,7 +88,7 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
     devDependencies:
-      '@agentgraph/typescript-config':
+      '@leverframe/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
       '@scalar/api-reference':
@@ -100,10 +100,10 @@ importers:
 
   apps/web:
     dependencies:
-      '@agentgraph/contracts':
+      '@leverframe/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@agentgraph/ui':
+      '@leverframe/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tanstack/react-table':
@@ -131,7 +131,7 @@ importers:
         specifier: 19.2.8
         version: 19.2.8(react@19.2.8)
     devDependencies:
-      '@agentgraph/typescript-config':
+      '@leverframe/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
       '@playwright/test':
@@ -165,7 +165,7 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
     devDependencies:
-      '@agentgraph/typescript-config':
+      '@leverframe/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
 
@@ -201,7 +201,7 @@ importers:
         specifier: 1.4.0
         version: 1.4.0
     devDependencies:
-      '@agentgraph/typescript-config':
+      '@leverframe/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@tailwindcss/postcss':

@@ -17,8 +17,8 @@ export function sanitizeCheckError(message: string): string {
 
 export function renderProgressComment(job: ReviewStatusJob, checkRunId: number): string {
   return [
-    '<!-- retn0-assistant:review-status -->',
-    '## retn0-assistant review',
+    '<!-- leverframe:review-status -->',
+    '## leverframe review',
     '',
     `⏳ Reviewing \`${job.headSha.slice(0, 7)}\``,
     '',
@@ -93,8 +93,8 @@ export function renderCompletedComment(input: {
         ];
 
   return [
-    '<!-- retn0-assistant:review-status -->',
-    '## retn0-assistant review',
+    '<!-- leverframe:review-status -->',
+    '## leverframe review',
     '',
     `${icon} ${input.reviewMode === 'incremental' ? 'Incremental review' : 'Review'} completed in ${seconds}s`,
     '',
@@ -109,8 +109,8 @@ export function renderCompletedComment(input: {
 
 export function renderSupersededComment(job: ReviewStatusJob, checkRunId: number): string {
   return [
-    '<!-- retn0-assistant:review-status -->',
-    '## retn0-assistant review',
+    '<!-- leverframe:review-status -->',
+    '## leverframe review',
     '',
     '⚪ Review superseded by a newer commit',
     '',
@@ -127,8 +127,8 @@ export function renderCancelledComment(
   reason: string,
 ): string {
   return [
-    '<!-- retn0-assistant:review-status -->',
-    '## retn0-assistant review',
+    '<!-- leverframe:review-status -->',
+    '## leverframe review',
     '',
     '⚪ Review cancelled',
     '',
@@ -147,8 +147,8 @@ export function renderFailedComment(input: {
   phase: string;
 }): string {
   return [
-    '<!-- retn0-assistant:review-status -->',
-    '## retn0-assistant review',
+    '<!-- leverframe:review-status -->',
+    '## leverframe review',
     '',
     '🔴 Review could not complete',
     '',

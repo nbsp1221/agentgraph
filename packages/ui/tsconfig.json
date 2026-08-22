@@ -1,4 +1,4 @@
 {
-  "extends": "@agentgraph/typescript-config/react-library.json",
+  "extends": "@leverframe/typescript-config/react-library.json",
   "include": ["src"]
 }

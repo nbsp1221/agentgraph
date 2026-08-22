@@ -91,7 +91,7 @@ describe('manual command reply delivery', () => {
           data:
             commentLookups === 1
               ? []
-              : [{ body: '<!-- retn0-assistant:command-reply:delivery-1 -->', id: 77 }],
+              : [{ body: '<!-- leverframe:command-reply:delivery-1 -->', id: 77 }],
         };
       }
       if (route === 'POST /repos/{owner}/{repo}/issues/{issue_number}/comments') {
@@ -104,9 +104,9 @@ describe('manual command reply delivery', () => {
     const client = new GitHubAppClient({
       appId: 1,
       clientId: 'client',
-      name: 'agentgraph',
+      name: 'leverframe',
       privateKey: 'private-key',
-      slug: 'agentgraph',
+      slug: 'leverframe',
       webhookSecret: 'secret',
     });
     const input = {

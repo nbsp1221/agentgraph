@@ -1,4 +1,4 @@
-import { cn } from '@agentgraph/ui/lib/utils';
+import { cn } from '@leverframe/ui/lib/utils';
 
 function Skeleton({ className, ...props }: React.ComponentProps<'div'>) {
   return (

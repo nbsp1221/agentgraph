@@ -1,11 +1,11 @@
-name: agentgraph
+name: leverframe
 
 services:
   reviewer:
     build:
       context: .
       target: reviewer
-    image: agentgraph-reviewer:local
+    image: leverframe-reviewer:local
     init: true
     restart: unless-stopped
     stop_grace_period: 2m
@@ -41,7 +41,7 @@ services:
     build:
       context: .
       target: web
-    image: agentgraph-web:local
+    image: leverframe-web:local
     init: true
     restart: unless-stopped
     environment:

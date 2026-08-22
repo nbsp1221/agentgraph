@@ -1,8 +1,8 @@
 {
-  "name": "agentgraph",
+  "name": "leverframe",
   "version": "0.0.0",
   "private": true,
-  "description": "Local-first control plane for running AI work loops to verified completion",
+  "description": "A local-first control plane for running AI work loops to verified completion",
   "license": "MIT",
   "author": "nbsp1221",
   "type": "module",
@@ -18,7 +18,7 @@
     "test:e2e": "turbo run test:e2e",
     "test:integration": "turbo run test:integration",
     "test:unit": "turbo run test:unit",
-    "test:watch": "pnpm --filter @agentgraph/reviewer test:watch",
+    "test:watch": "pnpm --filter @leverframe/reviewer test:watch",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {

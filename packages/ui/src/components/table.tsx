@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@agentgraph/ui/lib/utils';
+import { cn } from '@leverframe/ui/lib/utils';
 import * as React from 'react';
 
 function Table({ className, ...props }: React.ComponentProps<'table'>) {

@@ -7,8 +7,8 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@agentgraph/ui/components/breadcrumb';
-import { Button } from '@agentgraph/ui/components/button';
+} from '@leverframe/ui/components/breadcrumb';
+import { Button } from '@leverframe/ui/components/button';
 import {
   Sidebar,
   SidebarContent,
@@ -21,17 +21,18 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
-} from '@agentgraph/ui/components/sidebar';
-import { ToggleGroup, ToggleGroupItem } from '@agentgraph/ui/components/toggle-group';
+} from '@leverframe/ui/components/sidebar';
+import { ToggleGroup, ToggleGroupItem } from '@leverframe/ui/components/toggle-group';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@agentgraph/ui/components/tooltip';
-import { MoonIcon, SunIcon, WaypointsIcon } from 'lucide-react';
+} from '@leverframe/ui/components/tooltip';
+import { MoonIcon, SunIcon } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
+import Image from 'next/image';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { useEffect, useState } from 'react';
 import { Link, usePathname, useRouter } from '../i18n/navigation';
@@ -65,7 +66,22 @@ function AppSidebar() {
           href="/reviews"
           className="flex items-center gap-2 overflow-hidden rounded-md px-1 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <WaypointsIcon aria-hidden="true" />
+          <Image
+            src="/brand/leverframe-mark-on-white.svg"
+            alt=""
+            width={20}
+            height={20}
+            className="dark:hidden"
+            aria-hidden="true"
+          />
+          <Image
+            src="/brand/leverframe-mark-on-blue.svg"
+            alt=""
+            width={20}
+            height={20}
+            className="hidden dark:block"
+            aria-hidden="true"
+          />
           <span className="truncate text-sm font-semibold">{t('brand')}</span>
         </Link>
       </SidebarHeader>
@@ -79,7 +95,22 @@ function AppSidebar() {
                   isActive={pathname.endsWith('/reviews')}
                   render={<Link href="/reviews" />}
                 >
-                  <WaypointsIcon aria-hidden="true" />
+                  <Image
+                    src="/brand/leverframe-mark-on-white.svg"
+                    alt=""
+                    width={20}
+                    height={20}
+                    className="dark:hidden"
+                    aria-hidden="true"
+                  />
+                  <Image
+                    src="/brand/leverframe-mark-on-blue.svg"
+                    alt=""
+                    width={20}
+                    height={20}
+                    className="hidden dark:block"
+                    aria-hidden="true"
+                  />
                   <span>{t('codeReviewBot')}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>

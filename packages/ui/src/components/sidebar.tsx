@@ -1,22 +1,22 @@
 /* eslint-disable @eslint-react/no-use-context, @eslint-react/use-state, @eslint-react/no-context-provider */
 'use client';
 
-import { Button } from '@agentgraph/ui/components/button';
-import { Input } from '@agentgraph/ui/components/input';
-import { Separator } from '@agentgraph/ui/components/separator';
+import { mergeProps } from '@base-ui/react/merge-props';
+import { useRender } from '@base-ui/react/use-render';
+import { Button } from '@leverframe/ui/components/button';
+import { Input } from '@leverframe/ui/components/input';
+import { Separator } from '@leverframe/ui/components/separator';
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from '@agentgraph/ui/components/sheet';
-import { Skeleton } from '@agentgraph/ui/components/skeleton';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@agentgraph/ui/components/tooltip';
-import { useIsMobile } from '@agentgraph/ui/hooks/use-mobile';
-import { cn } from '@agentgraph/ui/lib/utils';
-import { mergeProps } from '@base-ui/react/merge-props';
-import { useRender } from '@base-ui/react/use-render';
+} from '@leverframe/ui/components/sheet';
+import { Skeleton } from '@leverframe/ui/components/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@leverframe/ui/components/tooltip';
+import { useIsMobile } from '@leverframe/ui/hooks/use-mobile';
+import { cn } from '@leverframe/ui/lib/utils';
 import { type VariantProps, cva } from 'class-variance-authority';
 import { PanelLeftIcon } from 'lucide-react';
 import * as React from 'react';

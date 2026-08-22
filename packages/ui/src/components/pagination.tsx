@@ -1,5 +1,5 @@
-import { Button } from '@agentgraph/ui/components/button';
-import { cn } from '@agentgraph/ui/lib/utils';
+import { Button } from '@leverframe/ui/components/button';
+import { cn } from '@leverframe/ui/lib/utils';
 import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontalIcon } from 'lucide-react';
 import * as React from 'react';
 

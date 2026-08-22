@@ -1,20 +1,20 @@
-import type { ReviewDetail } from '@agentgraph/contracts';
-import { Alert, AlertDescription, AlertTitle } from '@agentgraph/ui/components/alert';
-import { Badge } from '@agentgraph/ui/components/badge';
+import type { ReviewDetail } from '@leverframe/contracts';
+import { Alert, AlertDescription, AlertTitle } from '@leverframe/ui/components/alert';
+import { Badge } from '@leverframe/ui/components/badge';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@agentgraph/ui/components/card';
+} from '@leverframe/ui/components/card';
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@agentgraph/ui/components/empty';
+} from '@leverframe/ui/components/empty';
 import {
   Select,
   SelectContent,
@@ -23,8 +23,8 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from '@agentgraph/ui/components/select';
-import { Skeleton } from '@agentgraph/ui/components/skeleton';
+} from '@leverframe/ui/components/select';
+import { Skeleton } from '@leverframe/ui/components/skeleton';
 import { ActivityIcon, CircleAlertIcon, CircleCheckIcon, CircleXIcon } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { ReviewDetailPage } from '../features/reviews/review-detail';

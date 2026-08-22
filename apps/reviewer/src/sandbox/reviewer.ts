@@ -16,7 +16,7 @@ interface SandboxReview {
   reviewableLines: ReviewableLines;
 }
 
-const sandboxWorkspace = '/tmp/retn0-assistant-repository';
+const sandboxWorkspace = '/tmp/leverframe-repository';
 
 export class SandboxReviewer {
   constructor(
@@ -50,8 +50,8 @@ export class SandboxReviewer {
       schema: string;
     }) => void;
   }): Promise<SandboxReview> {
-    const sandboxName = `retn0-assistant-job-${input.jobId}`;
-    const sandboxOutputPath = '/tmp/retn0-assistant-review.json';
+    const sandboxName = `leverframe-job-${input.jobId}`;
+    const sandboxOutputPath = '/tmp/leverframe-review.json';
     const sandboxAnchor = join(input.jobDirectory, 'sandbox-anchor');
     const stagedResourcesDirectory = join(input.jobDirectory, 'review-resources');
     const schemaPath = join(stagedResourcesDirectory, 'review-schema.json');

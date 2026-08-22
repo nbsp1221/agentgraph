@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <mask id="leverframe-mark-mask">
+      <rect width="32" height="32" fill="white"/>
+      <rect x="10" y="10" width="12" height="12" rx="3.5" fill="black"/>
+      <rect x="20.5" y="3" width="9" height="8" rx="4"
+            fill="black" transform="rotate(-45 25 7)"/>
+      <g transform="rotate(180 16 16)">
+        <rect x="20.5" y="3" width="9" height="8" rx="4"
+              fill="black" transform="rotate(-45 25 7)"/>
+      </g>
+    </mask>
+  </defs>
+  <rect x="4" y="4" width="24" height="24" rx="7"
+        fill="currentColor" mask="url(#leverframe-mark-mask)"/>
+</svg>

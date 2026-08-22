@@ -1,4 +1,4 @@
-import type { dependencyStatusSchema, reviewStatusSchema } from '@agentgraph/contracts';
+import type { dependencyStatusSchema, reviewStatusSchema } from '@leverframe/contracts';
 import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { z } from 'zod';
@@ -6,7 +6,7 @@ import {
   errorResponseSchema,
   evaluationHistorySchema,
   reviewDetailSchema,
-} from '@agentgraph/contracts';
+} from '@leverframe/contracts';
 import type { ManualCommand } from '../jobs/command.js';
 import type {
   JobDatabase,

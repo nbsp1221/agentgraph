@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { type CAC, cac } from 'cac';
 import { loadServerConfig } from './app/config.js';
-import { createAgentGraphServer } from './app/server.js';
+import { createLeverframeServer } from './app/server.js';
 import { GitHubAppClient } from './github/client.js';
 import { CredentialStore } from './github/credentials.js';
 import { ManualCommandHandler } from './jobs/command-handler.js';
@@ -21,9 +21,9 @@ const packageMetadata = JSON.parse(
 ) as PackageMetadata;
 
 export function createCli(startServer: () => void = serve): CAC {
-  const cli = cac('agentgraph');
+  const cli = cac('leverframe');
 
-  cli.command('serve', 'Start the AgentGraph service').action(startServer);
+  cli.command('serve', 'Start the Leverframe service').action(startServer);
   cli.help();
   cli.version(packageMetadata.version);
 
@@ -38,7 +38,7 @@ export function run(args: readonly string[], startServer: () => void = serve): n
     return 0;
   }
 
-  cli.parse(['node', 'agentgraph', ...args], { run: false });
+  cli.parse(['node', 'leverframe', ...args], { run: false });
 
   if (cli.options.help || cli.options.version) {
     return 0;
@@ -84,7 +84,7 @@ function serve(): void {
     }),
   });
   const commandHandler = new ManualCommandHandler({ credentials, database, worker });
-  const server = createAgentGraphServer(config, database, credentials, {
+  const server = createLeverframeServer(config, database, credentials, {
     isSandboxAvailable: sandboxDaemonAvailable,
     isWorkerRunning: () => worker.isRunning,
     onJobQueued: (job) => worker.cancelSuperseded(job),
@@ -131,7 +131,7 @@ function serve(): void {
   process.once('SIGTERM', shutdown);
 
   server.listen(config.port, config.host, () => {
-    console.log(`AgentGraph listening on http://${config.host}:${config.port}`);
+    console.log(`Leverframe listening on http://${config.host}:${config.port}`);
     void startWorkerAfterRecovery(database, worker);
   });
 }

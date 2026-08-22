@@ -15,9 +15,9 @@ RUN pnpm install --frozen-lockfile
 COPY apps/reviewer ./apps/reviewer
 COPY apps/web ./apps/web
 COPY packages ./packages
-RUN pnpm --filter @agentgraph/reviewer build \
-  && pnpm --filter @agentgraph/reviewer deploy --prod /app/reviewer-runtime \
-  && pnpm --filter @agentgraph/web build
+RUN pnpm --filter @leverframe/reviewer build \
+  && pnpm --filter @leverframe/reviewer deploy --prod /app/reviewer-runtime \
+  && pnpm --filter @leverframe/web build
 
 # Next standalone tracing omits ESM files behind pnpm's @swc/helpers symlink.
 RUN swc_helpers_source="$(find /app/node_modules/.pnpm -type d -path '*/node_modules/@swc/helpers' -print -quit)" \
@@ -48,6 +48,7 @@ WORKDIR /app
 
 COPY --from=build --chown=node:node /app/apps/web/.next/standalone/ ./
 COPY --from=build --chown=node:node /app/apps/web/.next/static/ ./apps/web/.next/static/
+COPY --from=build --chown=node:node /app/apps/web/public/ ./apps/web/public/
 
 USER node
 EXPOSE 6572

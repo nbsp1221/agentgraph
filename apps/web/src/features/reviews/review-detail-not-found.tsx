@@ -1,4 +1,4 @@
-import { Button } from '@agentgraph/ui/components/button';
+import { Button } from '@leverframe/ui/components/button';
 import { getTranslations } from 'next-intl/server';
 import { Link } from '../../i18n/navigation';
 

@@ -11,11 +11,11 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@agentgraph/ui/components",
-    "utils": "@agentgraph/ui/lib/utils",
-    "hooks": "@agentgraph/ui/hooks",
-    "lib": "@agentgraph/ui/lib",
-    "ui": "@agentgraph/ui/components"
+    "components": "@leverframe/ui/components",
+    "utils": "@leverframe/ui/lib/utils",
+    "hooks": "@leverframe/ui/hooks",
+    "lib": "@leverframe/ui/lib",
+    "ui": "@leverframe/ui/components"
   },
   "rtl": false,
   "menuColor": "default",

@@ -4,7 +4,7 @@ import type {
   ReviewDetail,
   ReviewListItem,
   ReviewListResponse,
-} from '@agentgraph/contracts';
+} from '@leverframe/contracts';
 
 export const fixtureScenarios = [
   'default',
@@ -71,7 +71,7 @@ const observedAt = '2026-08-18T09:00:00.000Z';
 function review(overrides: Partial<ReviewListItem> = {}): ReviewListItem {
   return {
     id: 241,
-    repository: 'nbsp1221/agentgraph',
+    repository: 'nbsp1221/leverframe',
     pull_request_number: 118,
     pull_request_title: 'Harden review worker lifecycle',
     head_sha: 'd1ab712',

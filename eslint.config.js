@@ -14,7 +14,7 @@ const config = retn0(
 export default [
   ...config,
   {
-    name: 'agentgraph/ignore-generated',
+    name: 'leverframe/ignore-generated',
     ignores: ['**/dist/**', '**/.turbo/**', '**/.next/**', '**/*.tsbuildinfo'],
   },
   // The final core-web-vitals entry contains the official Next rules. The
@@ -22,7 +22,7 @@ export default [
   nextVitals[3],
   ...nextTypescript,
   {
-    name: 'agentgraph/next-overrides',
+    name: 'leverframe/next-overrides',
     rules: {
       '@next/next/no-html-link-for-pages': 'off',
     },

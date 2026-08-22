@@ -1,6 +1,6 @@
 import { runProcess } from '../system/process.js';
 
-const reviewSandboxPattern = /^retn0-assistant-job-(\d+)$/;
+const reviewSandboxPattern = /^leverframe-job-(\d+)$/;
 
 export function orphanReviewSandboxes(
   sandboxNames: readonly string[],

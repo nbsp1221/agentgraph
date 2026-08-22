@@ -10,9 +10,9 @@ import {
   reviewDetailSchema,
   reviewListResponseSchema,
   statusResponseSchema,
-} from '@agentgraph/contracts';
+} from '@leverframe/contracts';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createAgentGraphServer } from '../../../src/app/server.js';
+import { createLeverframeServer } from '../../../src/app/server.js';
 import { CredentialStore } from '../../../src/github/credentials.js';
 import { JobDatabase } from '../../../src/jobs/database.js';
 import { findingFingerprint } from '../../../src/review/result.js';
@@ -26,7 +26,7 @@ const config = {
   githubAppName: 'test',
   model: 'model',
   port: 6571,
-  uiBaseUrl: 'https://agentgraph.tailnet.example.com',
+  uiBaseUrl: 'https://leverframe.retn0.dev',
   webhookUrl: 'https://example.test/webhooks/github',
   reasoningEffort: 'low' as const,
   resourcesDirectory: '/unused',
@@ -64,7 +64,7 @@ afterEach(() => {
 });
 
 async function fixture() {
-  const directory = mkdtempSync(join(tmpdir(), 'agentgraph-api-'));
+  const directory = mkdtempSync(join(tmpdir(), 'leverframe-api-'));
   const credentials = new CredentialStore(directory);
   credentials.write({
     appId: 1,
@@ -97,7 +97,7 @@ async function fixture() {
     ...(job.attempt === undefined ? {} : { attempt: job.attempt }),
   });
   database.recordReviewArtifact(job.id, result);
-  const server = createAgentGraphServer(config, database, credentials);
+  const server = createLeverframeServer(config, database, credentials);
   await new Promise<void>((resolve) => {
     server.listen(0, '127.0.0.1', () => resolve());
   });
@@ -370,7 +370,7 @@ describe('versioned reviewer API contracts', () => {
   });
 
   it('excludes a valid-but-tampered artifact from findings and needs-evaluation', () => {
-    const root = mkdtempSync(join(tmpdir(), 'agentgraph-api-tamper-'));
+    const root = mkdtempSync(join(tmpdir(), 'leverframe-api-tamper-'));
     const path = join(root, 'state.sqlite');
     const database = new JobDatabase(path, { dataRoot: root });
     database.enqueuePullRequest({

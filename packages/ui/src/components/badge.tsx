@@ -1,6 +1,6 @@
-import { cn } from '@agentgraph/ui/lib/utils';
 import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
+import { cn } from '@leverframe/ui/lib/utils';
 import { type VariantProps, cva } from 'class-variance-authority';
 
 const badgeVariants = cva(

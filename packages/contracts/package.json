@@ -1,5 +1,5 @@
 {
-  "name": "@agentgraph/contracts",
+  "name": "@leverframe/contracts",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -14,6 +14,6 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@agentgraph/typescript-config": "workspace:*"
+    "@leverframe/typescript-config": "workspace:*"
   }
 }

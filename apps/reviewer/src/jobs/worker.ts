@@ -614,7 +614,7 @@ export class ReviewWorker {
   }): Promise<readonly string[] | undefined> {
     const source = await input.github.getRepositoryTextFile({
       installationId: input.job.installationId,
-      path: '.github/retn0-assistant.yml',
+      path: '.github/leverframe.yml',
       ref: input.defaultBranch,
       repository: input.job.repository,
     });

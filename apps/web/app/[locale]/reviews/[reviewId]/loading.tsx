@@ -1,4 +1,4 @@
-import { Skeleton } from '@agentgraph/ui/components/skeleton';
+import { Skeleton } from '@leverframe/ui/components/skeleton';
 
 export default function ReviewDetailLoading() {
   return (
