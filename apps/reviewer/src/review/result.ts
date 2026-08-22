@@ -47,7 +47,7 @@ export type ReviewResult = z.infer<typeof reviewResultSchema>;
 export type ReviewConclusion = 'neutral' | 'success';
 
 function normalizedPaths(paths: readonly string[]): Set<string> {
-  return new Set(paths.map((path) => path.replace(/^\.\//, '').trim().toLowerCase()));
+  return new Set(paths.map((path) => path.replace(/^\.\//, '').trim()));
 }
 
 export function reviewCoverage(result: ReviewResult):
@@ -156,7 +156,8 @@ function renderTableCell(value: string): string {
 function renderInlineCode(value: string): string {
   const longestFence = Math.max(0, ...[...value.matchAll(/`+/g)].map((match) => match[0].length));
   const fence = '`'.repeat(longestFence + 1);
-  return `${fence}${renderTableCell(value)}${fence}`;
+  const paddedValue = value.startsWith('`') || value.endsWith('`') ? ` ${value} ` : value;
+  return `${fence}${renderTableCell(paddedValue)}${fence}`;
 }
 
 export function renderReview(

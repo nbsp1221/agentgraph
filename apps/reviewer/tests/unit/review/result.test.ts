@@ -5,6 +5,7 @@ import {
   removePreviouslyReportedFindings,
   renderReview,
   reviewConclusion,
+  reviewCoverage,
 } from '../../../src/review/result.js';
 
 const previousFinding: ReviewResult['findings'][number] = {
@@ -132,6 +133,27 @@ describe('incremental review findings', () => {
       }),
     ).toBe('neutral');
   });
+
+  it('keeps changed-file coverage paths case-sensitive', () => {
+    const result: ReviewResult = {
+      ...previous,
+      findings: [],
+      coverage: {
+        changed_files: ['Foo.ts', 'foo.ts'],
+        complete: true,
+        omitted_files: ['foo.ts'],
+        reviewed_files: ['Foo.ts'],
+      },
+    };
+
+    expect(reviewCoverage(result)).toEqual({
+      changed: 2,
+      omitted: 1,
+      reviewed: 1,
+      complete: false,
+    });
+    expect(reviewConclusion(result)).toBe('neutral');
+  });
 });
 
 describe('review markdown checks', () => {
@@ -209,5 +231,14 @@ describe('review markdown checks', () => {
     );
     expect(body).toContain('### Findings\n\nNo actionable defects found.');
     expect(body).toContain('### Limitations\n\n- The sandbox was unavailable.');
+  });
+
+  it('keeps check commands ending in backticks inside a valid code span', () => {
+    const body = renderReview({
+      ...previous,
+      tests_run: [{ command: 'echo `date`', evidence: 'Command passed.', status: 'passed' }],
+    });
+
+    expect(body).toContain('| 🟢 **passed** | `` echo `date` `` | Command passed. |');
   });
 });
