@@ -29,6 +29,7 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-link: var(--link);
   --color-link-hover: var(--link-hover);
   --color-popover-foreground: var(--popover-foreground);
@@ -75,6 +76,7 @@
   --popover: #ffffff;
   --popover-foreground: #0a0a0a;
   --primary: var(--brand-blue-600);
+  --primary-hover: var(--brand-blue-700);
   --primary-foreground: #ffffff;
   --link: var(--brand-blue-700);
   --link-hover: var(--brand-blue-900);
@@ -107,6 +109,7 @@
   --popover: #171717;
   --popover-foreground: #fafafa;
   --primary: var(--brand-blue-700);
+  --primary-hover: var(--brand-blue-600);
   --primary-foreground: #ffffff;
   --link: var(--brand-blue-400);
   --link-hover: var(--brand-blue-300);
