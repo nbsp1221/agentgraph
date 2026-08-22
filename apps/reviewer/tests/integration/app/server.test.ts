@@ -20,7 +20,7 @@ const config: ServerConfig = {
   model: 'gpt-5.6-luna',
   port: 6571,
   uiBaseUrl: 'https://leverframe.retn0.dev',
-  webhookUrl: 'https://leverframe.retn0.dev/webhooks/github',
+  webhookUrl: 'https://leverframe-api.retn0.dev/webhooks/github',
   reasoningEffort: 'low',
   resourcesDirectory: '/unused/resources',
 };
