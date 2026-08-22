@@ -10,8 +10,6 @@ test-results/
 
 # Runtime state
 .leverframe/
-# Legacy runtime state retained for safe upgrades.
-.agentgraph/
 .internal/
 var/
 

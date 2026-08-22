@@ -2,20 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { loadServerConfig, resolveDataDirectory } from '../../../src/app/config.js';
+import { loadServerConfig } from '../../../src/app/config.js';
 
 describe('server configuration', () => {
-  it('reuses an existing legacy default data directory during upgrade', () => {
-    const rootDirectory = mkdtempSync(join(tmpdir(), 'leverframe-config-'));
-    mkdirSync(join(rootDirectory, '.agentgraph'));
-
-    try {
-      expect(resolveDataDirectory({}, rootDirectory)).toBe(join(rootDirectory, '.agentgraph'));
-    } finally {
-      rmSync(rootDirectory, { force: true, recursive: true });
-    }
-  });
-
   it('derives cohesive state paths from one data directory', () => {
     expect(
       loadServerConfig({

@@ -3,11 +3,9 @@ import type { ReviewInlineComment } from '../review/publication.js';
 import type { ReviewResult } from '../review/result.js';
 import {
   commandReplyMarker,
-  commandReplyMarkers,
   productName,
   reviewPublicationMarker,
-  reviewPublicationMarkers,
-  statusCommentMarkers,
+  statusCommentMarker,
 } from '../identity.js';
 import { renderReview } from '../review/result.js';
 import type { GitHubAppCredentials } from './credentials.js';
@@ -189,7 +187,7 @@ export class GitHubAppClient {
     const octokit = await this.#app.getInstallationOctokit(input.installationId);
     const marker = commandReplyMarker(input.deliveryId);
     const existingId = await this.#findIssueComment({
-      marker: commandReplyMarkers(input.deliveryId),
+      marker,
       octokit,
       owner,
       pullRequestNumber: input.pullRequestNumber,
@@ -213,7 +211,7 @@ export class GitHubAppClient {
       return Number(response.data.id);
     } catch (error) {
       const reconciledId = await this.#findIssueComment({
-        marker: commandReplyMarkers(input.deliveryId),
+        marker,
         octokit,
         owner,
         pullRequestNumber: input.pullRequestNumber,
@@ -329,7 +327,7 @@ export class GitHubAppClient {
     const [owner, repository] = splitRepository(input.repository);
     const octokit = await this.#app.getInstallationOctokit(input.installationId);
     return this.#findIssueComment({
-      marker: statusCommentMarkers(),
+      marker: statusCommentMarker(),
       octokit,
       owner,
       pullRequestNumber: input.pullRequestNumber,
@@ -408,7 +406,7 @@ export class GitHubAppClient {
 
     const marker = reviewPublicationMarker(input.jobId, input.expectedHeadSha);
     const existingId = await this.#findReview({
-      marker: reviewPublicationMarkers(input.jobId, input.expectedHeadSha),
+      marker,
       octokit,
       owner,
       pullRequestNumber: input.pullRequestNumber,
@@ -443,7 +441,7 @@ export class GitHubAppClient {
       return Number(review.data.id);
     } catch (error) {
       const reconciledId = await this.#findReview({
-        marker: reviewPublicationMarkers(input.jobId, input.expectedHeadSha),
+        marker,
         octokit,
         owner,
         pullRequestNumber: input.pullRequestNumber,
@@ -470,7 +468,7 @@ export class GitHubAppClient {
   }
 
   async #findIssueComment(input: {
-    marker: string | readonly string[];
+    marker: string;
     octokit: Awaited<ReturnType<App['getInstallationOctokit']>>;
     owner: string;
     pullRequestNumber: number;
@@ -486,7 +484,7 @@ export class GitHubAppClient {
           repo: input.repository,
         }),
       );
-      const comment = response.data.find((candidate) => hasMarker(candidate.body, input.marker));
+      const comment = response.data.find((candidate) => candidate.body?.includes(input.marker));
       if (comment !== undefined) {
         return Number(comment.id);
       }
@@ -547,7 +545,7 @@ export class GitHubAppClient {
   }
 
   async #findReview(input: {
-    marker: string | readonly string[];
+    marker: string;
     octokit: Awaited<ReturnType<App['getInstallationOctokit']>>;
     owner: string;
     pullRequestNumber: number;
@@ -563,7 +561,7 @@ export class GitHubAppClient {
           repo: input.repository,
         }),
       );
-      const review = response.data.find((candidate) => hasMarker(candidate.body, input.marker));
+      const review = response.data.find((candidate) => candidate.body?.includes(input.marker));
       if (review !== undefined) {
         return Number(review.id);
       }
@@ -758,15 +756,6 @@ function githubErrorStatus(error: unknown): number | undefined {
 function bodyWithMarker(body: string, marker: string): string {
   const suffix = `\n\n${marker}`;
   return `${limitGitHubBody(body, maximumGitHubBodyCharacters - suffix.length)}${suffix}`;
-}
-
-function hasMarker(body: string | null | undefined, marker: string | readonly string[]): boolean {
-  if (body === undefined || body === null) {
-    return false;
-  }
-  return (typeof marker === 'string' ? [marker] : marker).some((candidate) =>
-    body.includes(candidate),
-  );
 }
 
 function splitRepository(value: string): [string, string] {

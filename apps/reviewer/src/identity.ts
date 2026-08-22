@@ -7,62 +7,30 @@ export const productName = 'Leverframe';
 export const productSlug = 'leverframe';
 export const productUserAgent = productSlug;
 export const defaultDataDirectoryName = '.leverframe';
-export const legacyDataDirectoryName = '.agentgraph';
 
 /**
- * Stable identifiers used across GitHub, repository configuration, and the
- * disposable sandbox. Keep these independent of the product name: comments,
- * reviews, and sandbox resources can outlive a product rebrand.
+ * Identifiers shared by GitHub output, repository configuration, and the
+ * disposable sandbox.
  */
 export const reviewProtocol = {
-  namespace: 'reviewer',
-  repositoryPolicyPath: '.github/reviewer.yml',
-  sandboxNamePrefix: 'reviewer-job-',
-  sandboxOutputPath: '/tmp/reviewer-review.json',
-  sandboxWorkspace: '/tmp/reviewer-repository',
-  statusMarker: '<!-- reviewer:review-status -->',
+  namespace: 'leverframe',
+  repositoryPolicyPath: '.github/leverframe.yml',
+  sandboxNamePrefix: 'leverframe-job-',
+  sandboxOutputPath: '/tmp/leverframe-review.json',
+  sandboxWorkspace: '/tmp/leverframe-repository',
+  statusMarker: '<!-- leverframe:review-status -->',
 } as const;
 
-export const repositoryPolicyPaths = [
-  reviewProtocol.repositoryPolicyPath,
-  '.github/leverframe.yml',
-  '.github/retn0-assistant.yml',
-] as const;
-export const legacySandboxNamePrefixes = ['leverframe-job-', 'retn0-assistant-job-'] as const;
-
-const legacyProtocolNamespaces = ['leverframe', 'retn0-assistant'] as const;
-
-export function statusCommentMarkers(): readonly string[] {
-  return [
-    reviewProtocol.statusMarker,
-    ...legacyProtocolNamespaces.map((namespace) => `<!-- ${namespace}:review-status -->`),
-  ];
-}
-
-export function commandReplyMarkers(deliveryId: string): readonly string[] {
-  return [
-    `<!-- ${reviewProtocol.namespace}:command-reply:${deliveryId} -->`,
-    ...legacyProtocolNamespaces.map(
-      (namespace) => `<!-- ${namespace}:command-reply:${deliveryId} -->`,
-    ),
-  ];
-}
-
-export function reviewPublicationMarkers(jobId: number, headSha: string): readonly string[] {
-  return [
-    `<!-- ${reviewProtocol.namespace}:review-publication:${jobId}:${headSha} -->`,
-    ...legacyProtocolNamespaces.map(
-      (namespace) => `<!-- ${namespace}:review-publication:${jobId}:${headSha} -->`,
-    ),
-  ];
-}
-
-export function reviewPublicationMarker(jobId: number, headSha: string): string {
-  return reviewPublicationMarkers(jobId, headSha)[0] as string;
+export function statusCommentMarker(): string {
+  return reviewProtocol.statusMarker;
 }
 
 export function commandReplyMarker(deliveryId: string): string {
-  return commandReplyMarkers(deliveryId)[0] as string;
+  return `<!-- ${reviewProtocol.namespace}:command-reply:${deliveryId} -->`;
+}
+
+export function reviewPublicationMarker(jobId: number, headSha: string): string {
+  return `<!-- ${reviewProtocol.namespace}:review-publication:${jobId}:${headSha} -->`;
 }
 
 export function reviewerSandboxName(jobId: number): string {
@@ -71,11 +39,4 @@ export function reviewerSandboxName(jobId: number): string {
 
 export function reviewerSandboxPattern(): RegExp {
   return new RegExp(`^${reviewProtocol.sandboxNamePrefix}(\\d+)$`);
-}
-
-export function reviewerSandboxPatterns(): readonly RegExp[] {
-  return [
-    reviewerSandboxPattern(),
-    ...legacySandboxNamePrefixes.map((prefix) => new RegExp(`^${prefix}(\\d+)$`)),
-  ];
 }
