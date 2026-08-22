@@ -1,11 +1,18 @@
 import { App } from '@octokit/app';
 import type { ReviewInlineComment } from '../review/publication.js';
 import type { ReviewResult } from '../review/result.js';
+import {
+  commandReplyMarker,
+  commandReplyMarkers,
+  productName,
+  reviewPublicationMarker,
+  reviewPublicationMarkers,
+  statusCommentMarkers,
+} from '../identity.js';
 import { renderReview } from '../review/result.js';
 import type { GitHubAppCredentials } from './credentials.js';
 
 const maximumGitHubBodyCharacters = 60_000;
-const statusCommentMarker = '<!-- leverframe:review-status -->';
 
 export interface PullRequestDetails {
   baseRef: string;
@@ -182,7 +189,7 @@ export class GitHubAppClient {
     const octokit = await this.#app.getInstallationOctokit(input.installationId);
     const marker = commandReplyMarker(input.deliveryId);
     const existingId = await this.#findIssueComment({
-      marker,
+      marker: commandReplyMarkers(input.deliveryId),
       octokit,
       owner,
       pullRequestNumber: input.pullRequestNumber,
@@ -206,7 +213,7 @@ export class GitHubAppClient {
       return Number(response.data.id);
     } catch (error) {
       const reconciledId = await this.#findIssueComment({
-        marker,
+        marker: commandReplyMarkers(input.deliveryId),
         octokit,
         owner,
         pullRequestNumber: input.pullRequestNumber,
@@ -245,7 +252,7 @@ export class GitHubAppClient {
         details_url: `https://github.com/${input.repository}/pull/${input.pullRequestNumber}`,
         external_id: externalId,
         head_sha: input.headSha,
-        name: 'leverframe / code review',
+        name: `${productName} / code review`,
         output: {
           summary: 'Waiting for the review worker to start.',
           title: 'Code review queued',
@@ -322,7 +329,7 @@ export class GitHubAppClient {
     const [owner, repository] = splitRepository(input.repository);
     const octokit = await this.#app.getInstallationOctokit(input.installationId);
     return this.#findIssueComment({
-      marker: statusCommentMarker,
+      marker: statusCommentMarkers(),
       octokit,
       owner,
       pullRequestNumber: input.pullRequestNumber,
@@ -401,7 +408,7 @@ export class GitHubAppClient {
 
     const marker = reviewPublicationMarker(input.jobId, input.expectedHeadSha);
     const existingId = await this.#findReview({
-      marker,
+      marker: reviewPublicationMarkers(input.jobId, input.expectedHeadSha),
       octokit,
       owner,
       pullRequestNumber: input.pullRequestNumber,
@@ -436,7 +443,7 @@ export class GitHubAppClient {
       return Number(review.data.id);
     } catch (error) {
       const reconciledId = await this.#findReview({
-        marker,
+        marker: reviewPublicationMarkers(input.jobId, input.expectedHeadSha),
         octokit,
         owner,
         pullRequestNumber: input.pullRequestNumber,
@@ -463,7 +470,7 @@ export class GitHubAppClient {
   }
 
   async #findIssueComment(input: {
-    marker: string;
+    marker: string | readonly string[];
     octokit: Awaited<ReturnType<App['getInstallationOctokit']>>;
     owner: string;
     pullRequestNumber: number;
@@ -479,7 +486,7 @@ export class GitHubAppClient {
           repo: input.repository,
         }),
       );
-      const comment = response.data.find((candidate) => candidate.body?.includes(input.marker));
+      const comment = response.data.find((candidate) => hasMarker(candidate.body, input.marker));
       if (comment !== undefined) {
         return Number(comment.id);
       }
@@ -540,7 +547,7 @@ export class GitHubAppClient {
   }
 
   async #findReview(input: {
-    marker: string;
+    marker: string | readonly string[];
     octokit: Awaited<ReturnType<App['getInstallationOctokit']>>;
     owner: string;
     pullRequestNumber: number;
@@ -556,7 +563,7 @@ export class GitHubAppClient {
           repo: input.repository,
         }),
       );
-      const review = response.data.find((candidate) => candidate.body?.includes(input.marker));
+      const review = response.data.find((candidate) => hasMarker(candidate.body, input.marker));
       if (review !== undefined) {
         return Number(review.id);
       }
@@ -748,17 +755,18 @@ function githubErrorStatus(error: unknown): number | undefined {
   return typeof record?.status === 'number' ? record.status : undefined;
 }
 
-function reviewPublicationMarker(jobId: number, headSha: string): string {
-  return `<!-- leverframe:review-publication:${jobId}:${headSha} -->`;
-}
-
-function commandReplyMarker(deliveryId: string): string {
-  return `<!-- leverframe:command-reply:${deliveryId} -->`;
-}
-
 function bodyWithMarker(body: string, marker: string): string {
   const suffix = `\n\n${marker}`;
   return `${limitGitHubBody(body, maximumGitHubBodyCharacters - suffix.length)}${suffix}`;
+}
+
+function hasMarker(body: string | null | undefined, marker: string | readonly string[]): boolean {
+  if (body === undefined || body === null) {
+    return false;
+  }
+  return (typeof marker === 'string' ? [marker] : marker).some((candidate) =>
+    body.includes(candidate),
+  );
 }
 
 function splitRepository(value: string): [string, string] {

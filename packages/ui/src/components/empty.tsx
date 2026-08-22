@@ -1,4 +1,4 @@
-import { cn } from '@leverframe/ui/lib/utils';
+import { cn } from '@repo/ui/lib/utils';
 import { type VariantProps, cva } from 'class-variance-authority';
 
 function Empty({ className, ...props }: React.ComponentProps<'div'>) {

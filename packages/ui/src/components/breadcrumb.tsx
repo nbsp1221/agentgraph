@@ -1,6 +1,6 @@
 import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
-import { cn } from '@leverframe/ui/lib/utils';
+import { cn } from '@repo/ui/lib/utils';
 import { ChevronRightIcon, MoreHorizontalIcon } from 'lucide-react';
 import * as React from 'react';
 

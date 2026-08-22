@@ -1,23 +1,23 @@
 'use client';
 
-import type { ReviewListResponse } from '@leverframe/contracts';
-import { Alert, AlertDescription, AlertTitle } from '@leverframe/ui/components/alert';
-import { Button } from '@leverframe/ui/components/button';
+import type { ReviewListResponse } from '@repo/contracts';
+import { Alert, AlertDescription, AlertTitle } from '@repo/ui/components/alert';
+import { Button } from '@repo/ui/components/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@leverframe/ui/components/card';
+} from '@repo/ui/components/card';
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@leverframe/ui/components/empty';
-import { Input } from '@leverframe/ui/components/input';
+} from '@repo/ui/components/empty';
+import { Input } from '@repo/ui/components/input';
 import {
   Pagination,
   PaginationContent,
@@ -26,14 +26,14 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from '@leverframe/ui/components/pagination';
+} from '@repo/ui/components/pagination';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@leverframe/ui/components/select';
+} from '@repo/ui/components/select';
 import {
   Table,
   TableBody,
@@ -41,7 +41,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@leverframe/ui/components/table';
+} from '@repo/ui/components/table';
 import { flexRender, tableFeatures, useTable } from '@tanstack/react-table';
 import { AlertCircleIcon, SearchIcon } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { defaultDataDirectoryName } from '../identity.js';
 
 const uiBaseUrlSchema = z.string().superRefine((value, context) => {
   let parsed: URL;
@@ -93,7 +94,8 @@ function validateReviewResources(resourcesDirectory: string): void {
 }
 
 export function loadServerConfig(environment: NodeJS.ProcessEnv = process.env): ServerConfig {
-  const dataDirectory = environment.APP_DATA_DIRECTORY ?? join(process.cwd(), '.leverframe');
+  const dataDirectory =
+    environment.APP_DATA_DIRECTORY ?? join(process.cwd(), defaultDataDirectoryName);
   const port = Number(environment.APP_PORT ?? '6571');
   const resourcesDirectory =
     environment.APP_RESOURCES_DIRECTORY ?? join(process.cwd(), 'resources');

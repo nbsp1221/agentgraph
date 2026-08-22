@@ -7,8 +7,8 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@leverframe/ui/components/breadcrumb';
-import { Button } from '@leverframe/ui/components/button';
+} from '@repo/ui/components/breadcrumb';
+import { Button } from '@repo/ui/components/button';
 import {
   Sidebar,
   SidebarContent,
@@ -21,14 +21,14 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
-} from '@leverframe/ui/components/sidebar';
-import { ToggleGroup, ToggleGroupItem } from '@leverframe/ui/components/toggle-group';
+} from '@repo/ui/components/sidebar';
+import { ToggleGroup, ToggleGroupItem } from '@repo/ui/components/toggle-group';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@leverframe/ui/components/tooltip';
+} from '@repo/ui/components/tooltip';
 import { MoonIcon, SunIcon } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';

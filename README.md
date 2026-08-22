@@ -31,7 +31,7 @@ Install and validate the current skeleton:
 
 ```sh
 corepack pnpm install
-corepack pnpm --filter @leverframe/web exec playwright install chromium
+corepack pnpm --filter @repo/web exec playwright install chromium
 corepack pnpm check
 ```
 
@@ -122,7 +122,7 @@ A write client should read `GET /api/v1/reviews/{reviewId}/evaluations`, pass th
 The generated contract documents the complete read and evaluation surface. Review execution, cancellation, retry, authentication, CORS, CLI, and MCP are intentionally outside this API version.
 
 ```caddy
-leverframe.retn0.dev {
+app.example.com {
     @not-tailnet not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
     handle @not-tailnet {
         respond 403
@@ -137,7 +137,7 @@ leverframe.retn0.dev {
     }
 }
 
-leverframe-api.retn0.dev {
+api.example.com {
     @github_webhook {
         method POST
         path /webhooks/github

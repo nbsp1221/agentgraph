@@ -1,12 +1,8 @@
-import type { dependencyStatusSchema, reviewStatusSchema } from '@leverframe/contracts';
+import type { dependencyStatusSchema, reviewStatusSchema } from '@repo/contracts';
 import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { z } from 'zod';
-import {
-  errorResponseSchema,
-  evaluationHistorySchema,
-  reviewDetailSchema,
-} from '@leverframe/contracts';
+import { errorResponseSchema, evaluationHistorySchema, reviewDetailSchema } from '@repo/contracts';
 import type { ManualCommand } from '../jobs/command.js';
 import type {
   JobDatabase,

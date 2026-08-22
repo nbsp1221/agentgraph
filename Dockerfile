@@ -15,9 +15,9 @@ RUN pnpm install --frozen-lockfile
 COPY apps/reviewer ./apps/reviewer
 COPY apps/web ./apps/web
 COPY packages ./packages
-RUN pnpm --filter @leverframe/reviewer build \
-  && pnpm --filter @leverframe/reviewer deploy --prod /app/reviewer-runtime \
-  && pnpm --filter @leverframe/web build
+RUN pnpm --filter @repo/reviewer build \
+  && pnpm --filter @repo/reviewer deploy --prod /app/reviewer-runtime \
+  && pnpm --filter @repo/web build
 
 # Next standalone tracing omits ESM files behind pnpm's @swc/helpers symlink.
 RUN swc_helpers_source="$(find /app/node_modules/.pnpm -type d -path '*/node_modules/@swc/helpers' -print -quit)" \

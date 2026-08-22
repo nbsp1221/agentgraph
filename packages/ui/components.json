@@ -11,11 +11,11 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@leverframe/ui/components",
-    "utils": "@leverframe/ui/lib/utils",
-    "hooks": "@leverframe/ui/hooks",
-    "lib": "@leverframe/ui/lib",
-    "ui": "@leverframe/ui/components"
+    "components": "@repo/ui/components",
+    "utils": "@repo/ui/lib/utils",
+    "hooks": "@repo/ui/hooks",
+    "lib": "@repo/ui/lib",
+    "ui": "@repo/ui/components"
   },
   "rtl": false,
   "menuColor": "default",

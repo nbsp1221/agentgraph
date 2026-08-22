@@ -10,7 +10,7 @@ import {
   reviewDetailSchema,
   reviewListResponseSchema,
   statusResponseSchema,
-} from '@leverframe/contracts';
+} from '@repo/contracts';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createLeverframeServer } from '../../../src/app/server.js';
 import { CredentialStore } from '../../../src/github/credentials.js';

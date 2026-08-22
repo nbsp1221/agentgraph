@@ -4,7 +4,7 @@ import type {
   ReviewDetail,
   ReviewListItem,
   ReviewListResponse,
-} from '@leverframe/contracts';
+} from '@repo/contracts';
 
 export const fixtureScenarios = [
   'default',

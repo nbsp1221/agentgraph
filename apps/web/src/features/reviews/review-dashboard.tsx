@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
-import { Badge } from '@leverframe/ui/components/badge';
+import { Badge } from '@repo/ui/components/badge';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@leverframe/ui/components/card';
+} from '@repo/ui/components/card';
 import { CircleAlertIcon, CircleCheckIcon, CircleXIcon } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import type { ReviewDataSource } from './review-data';

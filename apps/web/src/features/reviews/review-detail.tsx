@@ -1,20 +1,20 @@
-import type { EvaluationsResponse, ReviewDetail } from '@leverframe/contracts';
-import { Alert, AlertDescription, AlertTitle } from '@leverframe/ui/components/alert';
-import { Badge } from '@leverframe/ui/components/badge';
-import { Button } from '@leverframe/ui/components/button';
+import type { EvaluationsResponse, ReviewDetail } from '@repo/contracts';
+import { Alert, AlertDescription, AlertTitle } from '@repo/ui/components/alert';
+import { Badge } from '@repo/ui/components/badge';
+import { Button } from '@repo/ui/components/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@leverframe/ui/components/card';
+} from '@repo/ui/components/card';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@leverframe/ui/components/collapsible';
-import { Separator } from '@leverframe/ui/components/separator';
+} from '@repo/ui/components/collapsible';
+import { Separator } from '@repo/ui/components/separator';
 import { ArrowLeftIcon, ChevronDownIcon, ExternalLinkIcon } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { Link } from '../../i18n/navigation';

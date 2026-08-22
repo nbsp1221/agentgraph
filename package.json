@@ -18,7 +18,7 @@
     "test:e2e": "turbo run test:e2e",
     "test:integration": "turbo run test:integration",
     "test:unit": "turbo run test:unit",
-    "test:watch": "pnpm --filter @leverframe/reviewer test:watch",
+    "test:watch": "pnpm --filter @repo/reviewer test:watch",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {

@@ -1,7 +1,7 @@
 'use client';
 
-import { Alert, AlertDescription, AlertTitle } from '@leverframe/ui/components/alert';
-import { Button } from '@leverframe/ui/components/button';
+import { Alert, AlertDescription, AlertTitle } from '@repo/ui/components/alert';
+import { Button } from '@repo/ui/components/button';
 import { AlertCircleIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 

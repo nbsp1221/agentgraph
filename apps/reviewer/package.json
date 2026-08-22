@@ -1,5 +1,5 @@
 {
-  "name": "@leverframe/reviewer",
+  "name": "@repo/reviewer",
   "version": "0.0.0",
   "private": true,
   "description": "Leverframe code review bot and GitHub integration",
@@ -23,8 +23,8 @@
   "dependencies": {
     "@hono/node-server": "2.1.1",
     "@hono/zod-openapi": "1.6.1",
-    "@leverframe/contracts": "workspace:*",
     "@octokit/app": "16.1.4",
+    "@repo/contracts": "workspace:*",
     "@scalar/hono-api-reference": "0.11.14",
     "cac": "7.0.0",
     "execa": "10.0.1",
@@ -33,7 +33,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@leverframe/typescript-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
     "@scalar/api-reference": "1.65.1",
     "@scalar/openapi-to-markdown": "0.5.40"
   },

@@ -1,4 +1,4 @@
-import { reviewDetailSchema } from '@leverframe/contracts';
+import { reviewDetailSchema } from '@repo/contracts';
 import { describe, expect, it } from 'vitest';
 import en from '../../messages/en.json';
 import ko from '../../messages/ko.json';

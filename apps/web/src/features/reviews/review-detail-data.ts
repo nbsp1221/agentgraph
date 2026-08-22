@@ -3,7 +3,7 @@ import {
   type ReviewDetail,
   evaluationsResponseSchema,
   reviewDetailSchema,
-} from '@leverframe/contracts';
+} from '@repo/contracts';
 
 export type ReviewDetailDataResult =
   | { kind: 'ok'; data: ReviewDetail }

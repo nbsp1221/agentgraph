@@ -4,6 +4,7 @@ import type { CredentialStore } from '../github/credentials.js';
 import type { ReviewableLines } from '../review/diff-lines.js';
 import type { SandboxReviewer } from '../sandbox/reviewer.js';
 import { GitHubAppClient } from '../github/client.js';
+import { repositoryPolicyPaths } from '../identity.js';
 import { selectReviewContext } from '../review/history.js';
 import { prepareReviewPublication } from '../review/publication.js';
 import { parseRepositoryPolicy } from '../review/repository-policy.js';
@@ -612,13 +613,18 @@ export class ReviewWorker {
     github: GitHubAppClient;
     job: ReviewJob;
   }): Promise<readonly string[] | undefined> {
-    const source = await input.github.getRepositoryTextFile({
-      installationId: input.job.installationId,
-      path: '.github/leverframe.yml',
-      ref: input.defaultBranch,
-      repository: input.job.repository,
-    });
-    return source === undefined ? undefined : parseRepositoryPolicy(source).review.instructions;
+    for (const path of repositoryPolicyPaths) {
+      const source = await input.github.getRepositoryTextFile({
+        installationId: input.job.installationId,
+        path,
+        ref: input.defaultBranch,
+        repository: input.job.repository,
+      });
+      if (source !== undefined) {
+        return parseRepositoryPolicy(source).review.instructions;
+      }
+    }
+    return undefined;
   }
 
   async #guardPublication(input: {

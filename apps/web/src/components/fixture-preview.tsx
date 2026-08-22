@@ -1,20 +1,20 @@
-import type { ReviewDetail } from '@leverframe/contracts';
-import { Alert, AlertDescription, AlertTitle } from '@leverframe/ui/components/alert';
-import { Badge } from '@leverframe/ui/components/badge';
+import type { ReviewDetail } from '@repo/contracts';
+import { Alert, AlertDescription, AlertTitle } from '@repo/ui/components/alert';
+import { Badge } from '@repo/ui/components/badge';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@leverframe/ui/components/card';
+} from '@repo/ui/components/card';
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@leverframe/ui/components/empty';
+} from '@repo/ui/components/empty';
 import {
   Select,
   SelectContent,
@@ -23,8 +23,8 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from '@leverframe/ui/components/select';
-import { Skeleton } from '@leverframe/ui/components/skeleton';
+} from '@repo/ui/components/select';
+import { Skeleton } from '@repo/ui/components/skeleton';
 import { ActivityIcon, CircleAlertIcon, CircleCheckIcon, CircleXIcon } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { ReviewDetailPage } from '../features/reviews/review-detail';

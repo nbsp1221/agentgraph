@@ -18,7 +18,7 @@ import {
   reviewListQuerySchema,
   reviewListResponseSchema,
   statusResponseSchema,
-} from '@leverframe/contracts';
+} from '@repo/contracts';
 import type { JobDatabase } from '../../jobs/database.js';
 import { findingFingerprint } from '../../review/result.js';
 import {

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { productName } from '../identity.js';
 
 export const reviewResultSchema = z.object({
   coverage: z
@@ -164,7 +165,7 @@ export function renderReview(
   result: ReviewResult,
   inlineFindingIndexes: ReadonlySet<number> = new Set(),
 ): string {
-  const sections = ['## leverframe review', '', result.summary];
+  const sections = [`## ${productName} review`, '', result.summary];
 
   sections.push('', '### Findings');
   if (result.findings.length === 0) {

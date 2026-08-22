@@ -1,8 +1,8 @@
 'use client';
 
 import { Dialog as SheetPrimitive } from '@base-ui/react/dialog';
-import { Button } from '@leverframe/ui/components/button';
-import { cn } from '@leverframe/ui/lib/utils';
+import { Button } from '@repo/ui/components/button';
+import { cn } from '@repo/ui/lib/utils';
 import { XIcon } from 'lucide-react';
 import * as React from 'react';
 

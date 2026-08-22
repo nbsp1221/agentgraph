@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
+import { productUserAgent } from '../identity.js';
 import type { GitHubAppCredentials } from './credentials.js';
 
 const conversionSchema = z.object({
@@ -53,7 +54,7 @@ export async function convertGitHubManifestCode(code: string): Promise<GitHubApp
     {
       headers: {
         'accept': 'application/vnd.github+json',
-        'user-agent': 'leverframe',
+        'user-agent': productUserAgent,
         'x-github-api-version': '2022-11-28',
       },
       method: 'POST',
