@@ -83,8 +83,8 @@ Imports remain explicit rather than using barrel exports. The `review` modules d
 The deployment boundary is:
 
 ```text
-GitHub -> public Caddy webhook route -> reviewer
-Tailnet operator -> private Caddy route -> web / reviewer API
+GitHub -> public Caddy webhook route (`leverframe.retn0.dev`) -> reviewer
+Tailnet operator -> private Caddy route (`leverframe-ui.retn0.dev`) -> web / reviewer API
 reviewer -> host sandboxd Unix socket -> disposable Codex Docker Sandbox
 ```
 
@@ -130,6 +130,12 @@ leverframe.retn0.dev {
     handle @github_webhook {
         reverse_proxy reviewer:6571
     }
+    handle {
+        respond 404
+    }
+}
+
+leverframe-ui.retn0.dev {
     @reviewer path /api/* /healthz /setup/github* /openapi.json /docs /docs/* /llms.txt
     handle @reviewer {
         reverse_proxy reviewer:6571
